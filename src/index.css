@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom animations */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* 3D Dice Rolling Animation - More dynamic rotation */
+@keyframes dice-roll {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  10% {
+    transform: rotateX(90deg) rotateY(90deg) rotateZ(45deg);
+  }
+  20% {
+    transform: rotateX(180deg) rotateY(180deg) rotateZ(90deg);
+  }
+  30% {
+    transform: rotateX(270deg) rotateY(270deg) rotateZ(135deg);
+  }
+  40% {
+    transform: rotateX(360deg) rotateY(360deg) rotateZ(180deg);
+  }
+  50% {
+    transform: rotateX(450deg) rotateY(450deg) rotateZ(225deg);
+  }
+  60% {
+    transform: rotateX(540deg) rotateY(540deg) rotateZ(270deg);
+  }
+  70% {
+    transform: rotateX(630deg) rotateY(630deg) rotateZ(315deg);
+  }
+  80% {
+    transform: rotateX(720deg) rotateY(720deg) rotateZ(360deg);
+  }
+  90% {
+    transform: rotateX(810deg) rotateY(810deg) rotateZ(405deg);
+  }
+  100% {
+    transform: rotateX(900deg) rotateY(900deg) rotateZ(450deg);
+  }
+}
+
+.animate-dice-roll {
+  animation: dice-roll 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 3D perspective utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Dice face styling */
+.dice-face {
+  backface-visibility: hidden;
+}
+
+/* Custom focus styles */
+input:focus {
+  outline: none;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 640px) {
+  .dice-container {
+    transform: scale(0.8);
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-dice-roll {
+    animation: none !important;
+    transform: rotateX(-15deg) rotateY(25deg) !important;
+  }
+}
+
+/* Custom button hover effects */
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* OTP input styling */
+input[type="text"]:focus,
+input[type="tel"]:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Coupon card styling */
+.coupon-sparkle {
+  animation: sparkle 2s infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Result display animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out;
+}
