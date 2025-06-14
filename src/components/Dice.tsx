@@ -58,19 +58,6 @@ export function Dice({
     };
   }, [isRolling, finalValue, onRollComplete]);
 
-  // Get rotation for current face
-  const getFaceRotation = (face: number) => {
-    switch (face) {
-      case 1: return "rotateX(-15deg) rotateY(25deg)"; // Front
-      case 2: return "rotateX(-15deg) rotateY(205deg)"; // Back
-      case 3: return "rotateX(-15deg) rotateY(115deg)"; // Right
-      case 4: return "rotateX(-15deg) rotateY(-65deg)"; // Left
-      case 5: return "rotateX(75deg) rotateY(25deg)"; // Top
-      case 6: return "rotateX(-105deg) rotateY(25deg)"; // Bottom
-      default: return "rotateX(-15deg) rotateY(25deg)";
-    }
-  };
-
   const renderDots = (face: number) => {
     const dotClass = `${dotSizes[size]} bg-gray-800 rounded-full`;
     
@@ -180,10 +167,10 @@ export function Dice({
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling ? "" : getFaceRotation(currentFace),
+            transform: isRolling ? "" : "rotateX(-15deg) rotateY(25deg)",
           }}
         >
-          {/* Single visible face based on current face */}
+          {/* Single visible face that changes during animation */}
           <div
             className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
             style={{
@@ -215,7 +202,7 @@ export function Dice({
       {/* Result Display */}
       {rollResult && !isRolling && (
         <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+          <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg animate-fadeInUp">
             <div className="text-center">
               <div className="text-sm font-medium text-gray-600">You rolled</div>
               <div className="text-2xl font-bold text-gray-900">{rollResult}</div>
