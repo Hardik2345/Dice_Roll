@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { useGameContext } from "../context/GameContext";
-// import { Coupon } from "../types";
+import api from "../services/api";
 
 export function OtpVerificationModal() {
   const { setCurrentStep, setVerified, state } = useGameContext();
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleClose = () => {
@@ -21,7 +23,7 @@ export function OtpVerificationModal() {
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
@@ -34,28 +36,68 @@ export function OtpVerificationModal() {
     }
   };
 
-  const handleResendOtp = () => {
-    // Simulate OTP resend
-    console.log("Resending OTP to:", state.phoneNumber);
+  const handleResendOtp = async () => {
+    setResending(true);
+    setError("");
+
+    try {
+      // Get name from context
+      const response = await api.sendOTP({
+        name: state.userName || "User",
+        mobile: state.phoneNumber,
+      });
+
+      if (response.data.success) {
+        // Reset OTP fields
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        // Show success message (optional)
+        console.log("OTP resent successfully");
+      }
+    } catch (error) {
+      console.error("Resend OTP error:", error);
+      setError("Failed to resend OTP. Please try again.");
+    } finally {
+      setResending(false);
+    }
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     const otpValue = otp.join("");
 
-    if (otpValue.length !== 4) {
-      setError("Please enter complete 4-digit OTP");
+    if (otpValue.length !== 6) {
+      setError("Please enter complete 6-digit OTP");
       return;
     }
 
-    // Simulate OTP verification
-    if (otpValue === "1234") {
-      setError("");
-      setVerified(true);
+    setError("");
+    setLoading(true);
 
-      // Changed: Now go to rollDice instead of generating coupon and going to couponReveal
-      setCurrentStep("rollDice");
-    } else {
-      setError("Invalid OTP. Please try again.");
+    try {
+      // Call backend to verify OTP
+      const response = await api.verifyOTP(otpValue);
+
+      if (response.data.success) {
+        setVerified(true);
+        setCurrentStep("rollDice");
+      }
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+
+      if (error.response?.status === 400) {
+        if (error.response.data.error.includes("Session expired")) {
+          setError("Session expired. Please start again.");
+          setTimeout(() => {
+            setCurrentStep("phoneNumber");
+          }, 2000);
+        } else {
+          setError("Invalid OTP. Please try again.");
+        }
+      } else {
+        setError("Failed to verify OTP. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,33 +107,6 @@ export function OtpVerificationModal() {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-      {/* Background Dice with sparkles */}
-      {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="relative">
-          <div className="w-32 h-32 opacity-20">
-            <div className="w-full h-full bg-gray-300 rounded-lg border-2 border-gray-400 flex items-center justify-center">
-              <div className="grid grid-cols-3 gap-1 p-2">
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-                <div></div>
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-                <div></div>
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-                <div></div>
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-                <div></div>
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-              </div>
-            </div>
-          </div>
-          <div className="absolute -top-4 -left-4 text-white text-xl animate-pulse">
-            ✨
-          </div>
-          <div className="absolute -top-6 -right-2 text-white text-lg animate-bounce delay-300">
-            ✨
-          </div>
-        </div>
-      </div> */}
-
       {/* Modal */}
       <div className="bg-white w-full max-w-md mx-4 mb-4 rounded-t-3xl shadow-2xl animate-slide-up">
         {/* Header */}
@@ -112,9 +127,12 @@ export function OtpVerificationModal() {
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
-              ENTER YOUR 4 DIGIT OTP*
+              ENTER YOUR 6 DIGIT OTP*
             </label>
-            <div className="flex gap-3 justify-center mb-4">
+            <p className="text-xs text-gray-500 text-center mb-4">
+              (Use OTP: 123456 for testing)
+            </p>
+            <div className="flex gap-2 justify-center mb-4">
               {otp.map((digit, index) => (
                 <input
                   key={index}
@@ -123,17 +141,19 @@ export function OtpVerificationModal() {
                   value={digit}
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-12 h-12 border-2 border-gray-300 text-center text-xl font-bold outline-none focus:border-red-600 transition-colors"
+                  className="w-10 h-12 border-2 border-gray-300 text-center text-xl font-bold outline-none focus:border-red-600 transition-colors"
                   maxLength={1}
+                  disabled={loading}
                 />
               ))}
             </div>
 
             <button
               onClick={handleResendOtp}
-              className="block mx-auto text-red-600 font-medium hover:underline"
+              disabled={resending || loading}
+              className="block mx-auto text-red-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              RESEND OTP
+              {resending ? "RESENDING..." : "RESEND OTP"}
             </button>
 
             {error && (
@@ -143,9 +163,10 @@ export function OtpVerificationModal() {
 
           <button
             onClick={handleStartGame}
-            className="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-none hover:bg-red-700 transition-colors"
+            disabled={loading}
+            className="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-none hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            START GAME
+            {loading ? "VERIFYING..." : "START GAME"}
           </button>
         </div>
       </div>

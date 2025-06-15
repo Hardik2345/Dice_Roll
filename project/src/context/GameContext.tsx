@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { GameState, GameStep, Coupon } from '../types';
+import React, { createContext, useContext, useReducer, ReactNode } from "react";
+import { GameState, GameStep, Coupon } from "../types";
 
 interface GameContextType {
   state: GameState;
   setCurrentStep: (step: GameStep) => void;
   setPhoneNumber: (phone: string) => void;
+  setUserName: (name: string) => void;
   setOtp: (otp: string) => void;
   setVerified: (verified: boolean) => void;
   addCoupon: (coupon: Coupon) => void;
@@ -14,49 +15,43 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 type GameAction =
-  | { type: 'SET_CURRENT_STEP'; payload: GameStep }
-  | { type: 'SET_PHONE_NUMBER'; payload: string }
-  | { type: 'SET_OTP'; payload: string }
-  | { type: 'SET_VERIFIED'; payload: boolean }
-  | { type: 'ADD_COUPON'; payload: Coupon }
-  | { type: 'RESET_GAME' };
+  | { type: "SET_CURRENT_STEP"; payload: GameStep }
+  | { type: "SET_PHONE_NUMBER"; payload: string }
+  | { type: "SET_USER_NAME"; payload: string }
+  | { type: "SET_OTP"; payload: string }
+  | { type: "SET_VERIFIED"; payload: boolean }
+  | { type: "ADD_COUPON"; payload: Coupon }
+  | { type: "RESET_GAME" };
 
 const initialState: GameState = {
-  currentStep: 'landing',
-  phoneNumber: '',
-  otp: '',
+  currentStep: "landing",
+  phoneNumber: "",
+  userName: "",
+  otp: "",
   isVerified: false,
   wonCoupon: null,
-  allCoupons: [
-    {
-      id: '1',
-      discount: 200,
-      minOrder: 1000,
-      validFrom: '31/05/2025',
-      validTo: '06/11/2025',
-      code: 'DICE200',
-      isUsed: false,
-    }
-  ],
+  allCoupons: [],
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case 'SET_CURRENT_STEP':
+    case "SET_CURRENT_STEP":
       return { ...state, currentStep: action.payload };
-    case 'SET_PHONE_NUMBER':
+    case "SET_PHONE_NUMBER":
       return { ...state, phoneNumber: action.payload };
-    case 'SET_OTP':
+    case "SET_USER_NAME":
+      return { ...state, userName: action.payload };
+    case "SET_OTP":
       return { ...state, otp: action.payload };
-    case 'SET_VERIFIED':
+    case "SET_VERIFIED":
       return { ...state, isVerified: action.payload };
-    case 'ADD_COUPON':
+    case "ADD_COUPON":
       return {
         ...state,
         wonCoupon: action.payload,
         allCoupons: [action.payload, ...state.allCoupons],
       };
-    case 'RESET_GAME':
+    case "RESET_GAME":
       return { ...initialState, allCoupons: state.allCoupons };
     default:
       return state;
@@ -67,27 +62,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
   const setCurrentStep = (step: GameStep) => {
-    dispatch({ type: 'SET_CURRENT_STEP', payload: step });
+    dispatch({ type: "SET_CURRENT_STEP", payload: step });
   };
 
   const setPhoneNumber = (phone: string) => {
-    dispatch({ type: 'SET_PHONE_NUMBER', payload: phone });
+    dispatch({ type: "SET_PHONE_NUMBER", payload: phone });
+  };
+
+  const setUserName = (name: string) => {
+    dispatch({ type: "SET_USER_NAME", payload: name });
   };
 
   const setOtp = (otp: string) => {
-    dispatch({ type: 'SET_OTP', payload: otp });
+    dispatch({ type: "SET_OTP", payload: otp });
   };
 
   const setVerified = (verified: boolean) => {
-    dispatch({ type: 'SET_VERIFIED', payload: verified });
+    dispatch({ type: "SET_VERIFIED", payload: verified });
   };
 
   const addCoupon = (coupon: Coupon) => {
-    dispatch({ type: 'ADD_COUPON', payload: coupon });
+    dispatch({ type: "ADD_COUPON", payload: coupon });
   };
 
   const resetGame = () => {
-    dispatch({ type: 'RESET_GAME' });
+    dispatch({ type: "RESET_GAME" });
   };
 
   return (
@@ -96,6 +95,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         state,
         setCurrentStep,
         setPhoneNumber,
+        setUserName,
         setOtp,
         setVerified,
         addCoupon,
@@ -110,7 +110,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 export function useGameContext() {
   const context = useContext(GameContext);
   if (context === undefined) {
-    throw new Error('useGameContext must be used within a GameProvider');
+    throw new Error("useGameContext must be used within a GameProvider");
   }
   return context;
 }

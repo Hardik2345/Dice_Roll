@@ -1,26 +1,57 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { useGameContext } from "../context/GameContext";
+import api from "../services/api";
 
 export function PhoneNumberModal() {
-  const { setCurrentStep, setPhoneNumber } = useGameContext();
+  const { setCurrentStep, setPhoneNumber, setUserName } = useGameContext();
   const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleClose = () => {
-    setCurrentStep("landing"); // Changed from 'rollDice' to 'landing'
+    setCurrentStep("landing");
   };
 
-  const handleNext = () => {
-    // Validate phone number (10 digits)
+  const handleNext = async () => {
+    // Validate inputs
+    if (!name.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+
     if (!/^\d{10}$/.test(phone)) {
       setError("Please enter a valid 10-digit mobile number");
       return;
     }
 
     setError("");
-    setPhoneNumber(phone);
-    setCurrentStep("otpVerification");
+    setLoading(true);
+
+    try {
+      // Call backend to send OTP
+      const response = await api.sendOTP({ name, mobile: phone });
+
+      if (response.data.success) {
+        // Store phone number and name in context
+        setPhoneNumber(phone);
+        setUserName(name);
+        setCurrentStep("otpVerification");
+      }
+    } catch (error) {
+      console.error("Send OTP error:", error);
+
+      if (error.response?.data?.alreadyPlayed) {
+        setError("You have already played this game!");
+      } else {
+        setError(
+          error.response?.data?.error || "Failed to send OTP. Please try again."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,25 +62,6 @@ export function PhoneNumberModal() {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-      {/* Background Dice
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-32 h-32 opacity-20">
-          <div className="w-full h-full bg-gray-300 rounded-lg border-2 border-gray-400 flex items-center justify-center">
-            <div className="grid grid-cols-3 gap-1 p-2">
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-              <div></div>
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-              <div></div>
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-              <div></div>
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-              <div></div>
-              <div className="w-2 h-2 bg-black rounded-full"></div>
-            </div>
-          </div>
-        </div>
-      </div> */}
-
       {/* Modal */}
       <div className="bg-white w-full max-w-md mx-4 mb-4 rounded-t-3xl shadow-2xl animate-slide-up">
         {/* Header */}
@@ -65,8 +77,21 @@ export function PhoneNumberModal() {
         {/* Content */}
         <div className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            ENTER MOBILE NUMBER
+            ENTER YOUR DETAILS
           </h2>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              NAME*
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full px-3 py-3 border border-gray-300 rounded-none outline-none text-gray-900 focus:border-red-600"
+            />
+          </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -90,9 +115,10 @@ export function PhoneNumberModal() {
 
           <button
             onClick={handleNext}
-            className="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-none hover:bg-red-700 transition-colors"
+            disabled={loading}
+            className="w-full bg-red-600 text-white font-bold text-lg py-4 rounded-none hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            NEXT
+            {loading ? "SENDING OTP..." : "NEXT"}
           </button>
         </div>
       </div>

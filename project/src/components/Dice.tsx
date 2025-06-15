@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface DiceProps {
   isRolling?: boolean;
   size?: "small" | "medium" | "large";
   showSparkles?: boolean;
+  result?: number; // New prop to specify which face to show
 }
 
 export function Dice({
   isRolling = false,
   size = "large",
   showSparkles = false,
+  result,
 }: DiceProps) {
+  const [finalRotation, setFinalRotation] = useState({ x: -15, y: 25 });
+
   const sizeClasses = {
     small: "w-16 h-16",
     medium: "w-24 h-24",
@@ -24,6 +28,38 @@ export function Dice({
   };
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
+
+  // Define rotations for each face to be on top
+  const faceRotations = [
+    { x: 0, y: 0 }, // Face 1
+    { x: 0, y: 180 }, // Face 2
+    { x: 0, y: -90 }, // Face 3
+    { x: 0, y: 90 }, // Face 4
+    { x: -90, y: 0 }, // Face 5
+    { x: 90, y: 0 }, // Face 6
+  ];
+
+  useEffect(() => {
+    if (isRolling && result) {
+      // When rolling starts with a specific result, use that
+      const rotation = faceRotations[result - 1];
+
+      // Set a timeout to apply the rotation after the animation
+      setTimeout(() => {
+        setFinalRotation(rotation);
+      }, 1900); // Apply just before animation ends
+    } else if (isRolling) {
+      // When rolling starts without a specific result, generate random face
+      const randomFace = Math.floor(Math.random() * 6);
+      const rotation = faceRotations[randomFace];
+
+      // Set a timeout to apply the rotation after the animation
+      setTimeout(() => {
+        setFinalRotation(rotation);
+      }, 1900); // Apply just before animation ends
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRolling, result]);
 
   return (
     <div className="relative flex items-center justify-center">
@@ -55,14 +91,16 @@ export function Dice({
         }}
       >
         <div
-          className={`relative transition-transform duration-2000 ease-out ${
-            isRolling ? "animate-dice-roll" : ""
-          }`}
+          className={`relative transition-transform ${
+            isRolling ? "duration-[2000ms]" : "duration-300"
+          } ease-out`}
           style={{
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling ? "" : "rotateX(-15deg) rotateY(25deg)",
+            transform: isRolling
+              ? "rotateX(720deg) rotateY(720deg) rotateZ(720deg)"
+              : `rotateX(${finalRotation.x}deg) rotateY(${finalRotation.y}deg)`,
           }}
         >
           {/* Face 1 - Front (1 dot) */}
@@ -88,10 +126,10 @@ export function Dice({
           >
             <div className="flex justify-between items-center w-full h-full p-3">
               <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full`}
+                className={`${dotSizes[size]} bg-gray-800 rounded-full self-start`}
               ></div>
               <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full`}
+                className={`${dotSizes[size]} bg-gray-800 rounded-full self-end`}
               ></div>
             </div>
           </div>
