@@ -32,15 +32,15 @@ export function Dice({
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
 
-  // Define rotation transforms for each face
+  // Define rotation transforms for each face to be visible
   const getFaceTransform = (face: number) => {
     switch (face) {
-      case 1: return "rotateX(0deg) rotateY(0deg)";
-      case 2: return "rotateX(0deg) rotateY(180deg)";
-      case 3: return "rotateX(0deg) rotateY(90deg)";
-      case 4: return "rotateX(0deg) rotateY(-90deg)";
-      case 5: return "rotateX(-90deg) rotateY(0deg)";
-      case 6: return "rotateX(90deg) rotateY(0deg)";
+      case 1: return "rotateX(0deg) rotateY(0deg)"; // Front face
+      case 2: return "rotateX(0deg) rotateY(180deg)"; // Back face
+      case 3: return "rotateX(0deg) rotateY(-90deg)"; // Right face
+      case 4: return "rotateX(0deg) rotateY(90deg)"; // Left face
+      case 5: return "rotateX(-90deg) rotateY(0deg)"; // Top face
+      case 6: return "rotateX(90deg) rotateY(0deg)"; // Bottom face
       default: return "rotateX(0deg) rotateY(0deg)";
     }
   };
