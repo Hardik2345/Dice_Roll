@@ -32,6 +32,19 @@ export function Dice({
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
 
+  // Define rotation transforms for each face
+  const getFaceTransform = (face: number) => {
+    switch (face) {
+      case 1: return "rotateX(0deg) rotateY(0deg)";
+      case 2: return "rotateX(0deg) rotateY(180deg)";
+      case 3: return "rotateX(0deg) rotateY(90deg)";
+      case 4: return "rotateX(0deg) rotateY(-90deg)";
+      case 5: return "rotateX(-90deg) rotateY(0deg)";
+      case 6: return "rotateX(90deg) rotateY(0deg)";
+      default: return "rotateX(0deg) rotateY(0deg)";
+    }
+  };
+
   // Handle rolling animation with random face changes
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -167,10 +180,10 @@ export function Dice({
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling ? "" : "rotateX(-15deg) rotateY(25deg)",
+            transform: isRolling ? "" : getFaceTransform(currentFace),
           }}
         >
-          {/* Single visible face that changes during animation */}
+          {/* Face 1 - Front (1 dot) */}
           <div
             className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
             style={{
@@ -179,24 +192,69 @@ export function Dice({
               transform: `translateZ(${cubeSize / 2}px)`,
             }}
           >
-            {renderDots(currentFace)}
+            {renderDots(1)}
+          </div>
+
+          {/* Face 2 - Back (2 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `translateZ(-${cubeSize / 2}px) rotateY(180deg)`,
+            }}
+          >
+            {renderDots(2)}
+          </div>
+
+          {/* Face 3 - Right (3 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateY(90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            {renderDots(3)}
+          </div>
+
+          {/* Face 4 - Left (4 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateY(-90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            {renderDots(4)}
+          </div>
+
+          {/* Face 5 - Top (5 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateX(90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            {renderDots(5)}
+          </div>
+
+          {/* Face 6 - Bottom (6 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-200 to-gray-300 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateX(-90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            {renderDots(6)}
           </div>
         </div>
-
-        {/* Dynamic Shadow */}
-        <div
-          className={`absolute bg-black/30 rounded-full transition-all duration-300 ${
-            isRolling ? "animate-pulse scale-110" : "scale-100"
-          }`}
-          style={{
-            width: `${cubeSize * 0.8}px`,
-            height: `${cubeSize * 0.3}px`,
-            left: "50%",
-            top: `${cubeSize + 10}px`,
-            transform: "translateX(-50%)",
-            filter: "blur(8px)",
-          }}
-        ></div>
       </div>
 
       {/* Result Display */}
