@@ -4,19 +4,16 @@ interface DiceProps {
   isRolling?: boolean;
   size?: "small" | "medium" | "large";
   showSparkles?: boolean;
-  finalValue?: number;
-  onRollComplete?: (value: number) => void;
+  result?: number; // New prop to specify which face to show
 }
 
 export function Dice({
   isRolling = false,
   size = "large",
   showSparkles = false,
-  finalValue,
-  onRollComplete,
+  result,
 }: DiceProps) {
-  const [currentFace, setCurrentFace] = useState(1);
-  const [rollResult, setRollResult] = useState<number | null>(null);
+  const [finalRotation, setFinalRotation] = useState({ x: -15, y: 25 });
   const [isSettling, setIsSettling] = useState(false);
 
   const sizeClasses = {
@@ -33,110 +30,55 @@ export function Dice({
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
 
-  // Handle rolling animation with random face changes
+  // Define rotations for each face to be on top
+  const faceRotations = [
+    { x: 0, y: 0 }, // Face 1
+    { x: 0, y: 180 }, // Face 2
+    { x: 0, y: -90 }, // Face 3
+    { x: 0, y: 90 }, // Face 4
+    { x: -90, y: 0 }, // Face 5
+    { x: 90, y: 0 }, // Face 6
+  ];
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (isRolling) {
-      setRollResult(null);
+    if (isRolling && result) {
+      // Reset settling state
       setIsSettling(false);
-      // Change faces rapidly during roll
-      interval = setInterval(() => {
-        setCurrentFace(Math.floor(Math.random() * 6) + 1);
-      }, 100);
       
+      // When rolling starts with a specific result, use that
+      const rotation = faceRotations[result - 1];
+
       // Start settling phase (blur) before final result
       setTimeout(() => {
         setIsSettling(true);
       }, 1700);
-      
-      // Stop rolling and set final result
+
+      // Set a timeout to apply the rotation after the animation
       setTimeout(() => {
-        clearInterval(interval);
-        const result = finalValue || Math.floor(Math.random() * 6) + 1;
-        setCurrentFace(result);
-        setRollResult(result);
+        setFinalRotation(rotation);
         setIsSettling(false);
-        onRollComplete?.(result);
-      }, 2000);
-    }
+      }, 1900); // Apply just before animation ends
+    } else if (isRolling) {
+      // Reset settling state
+      setIsSettling(false);
+      
+      // When rolling starts without a specific result, generate random face
+      const randomFace = Math.floor(Math.random() * 6);
+      const rotation = faceRotations[randomFace];
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRolling, finalValue, onRollComplete]);
+      // Start settling phase (blur) before final result
+      setTimeout(() => {
+        setIsSettling(true);
+      }, 1700);
 
-  const renderDots = (face: number) => {
-    const dotClass = `${dotSizes[size]} bg-gray-800 rounded-full`;
-    
-    switch (face) {
-      case 1:
-        return <div className={dotClass}></div>;
-      
-      case 2:
-        return (
-          <div className="flex justify-between items-center w-full h-full p-3">
-            <div className={dotClass}></div>
-            <div className={dotClass}></div>
-          </div>
-        );
-      
-      case 3:
-        return (
-          <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
-            <div className={`${dotClass} justify-self-start self-start`}></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-center self-center`}></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-end self-end`}></div>
-          </div>
-        );
-      
-      case 4:
-        return (
-          <div className="grid grid-cols-2 gap-4 w-full h-full p-3">
-            <div className={`${dotClass} justify-self-start self-start`}></div>
-            <div className={`${dotClass} justify-self-end self-start`}></div>
-            <div className={`${dotClass} justify-self-start self-end`}></div>
-            <div className={`${dotClass} justify-self-end self-end`}></div>
-          </div>
-        );
-      
-      case 5:
-        return (
-          <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
-            <div className={`${dotClass} justify-self-start self-start`}></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-end self-start`}></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-center self-center`}></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-start self-end`}></div>
-            <div></div>
-            <div className={`${dotClass} justify-self-end self-end`}></div>
-          </div>
-        );
-      
-      case 6:
-        return (
-          <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
-            <div className={`${dotClass} justify-self-start self-start`}></div>
-            <div className={`${dotClass} justify-self-end self-start`}></div>
-            <div className={`${dotClass} justify-self-start self-center`}></div>
-            <div className={`${dotClass} justify-self-end self-center`}></div>
-            <div className={`${dotClass} justify-self-start self-end`}></div>
-            <div className={`${dotClass} justify-self-end self-end`}></div>
-          </div>
-        );
-      
-      default:
-        return <div className={dotClass}></div>;
+      // Set a timeout to apply the rotation after the animation
+      setTimeout(() => {
+        setFinalRotation(rotation);
+        setIsSettling(false);
+      }, 1900); // Apply just before animation ends
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRolling, result]);
 
   return (
     <div className="relative flex items-center justify-center">
@@ -168,17 +110,19 @@ export function Dice({
         }}
       >
         <div
-          className={`relative transition-all duration-300 ease-out ${
-            isRolling ? "animate-dice-roll" : ""
-          } ${isSettling ? "blur-sm" : ""}`}
+          className={`relative transition-all ${
+            isRolling ? "duration-[2000ms]" : "duration-300"
+          } ease-out ${isSettling ? "blur-sm" : ""}`}
           style={{
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling ? "" : "rotateX(-15deg) rotateY(25deg)",
+            transform: isRolling
+              ? "rotateX(720deg) rotateY(720deg) rotateZ(720deg)"
+              : `rotateX(${finalRotation.x}deg) rotateY(${finalRotation.y}deg)`,
           }}
         >
-          {/* Single visible face that changes during animation */}
+          {/* Face 1 - Front (1 dot) */}
           <div
             className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
             style={{
@@ -187,22 +131,145 @@ export function Dice({
               transform: `translateZ(${cubeSize / 2}px)`,
             }}
           >
-            {renderDots(currentFace)}
+            <div className={`${dotSizes[size]} bg-gray-800 rounded-full`}></div>
           </div>
-        </div>
-      </div>
 
-      {/* Result Display */}
-      {rollResult && !isRolling && (
-        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg animate-fadeInUp">
-            <div className="text-center">
-              <div className="text-sm font-medium text-gray-600">You rolled</div>
-              <div className="text-2xl font-bold text-gray-900">{rollResult}</div>
+          {/* Face 2 - Back (2 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `translateZ(-${cubeSize / 2}px) rotateY(180deg)`,
+            }}
+          >
+            <div className="flex justify-between items-center w-full h-full p-3">
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full self-start`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full self-end`}
+              ></div>
+            </div>
+          </div>
+
+          {/* Face 3 - Right (3 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateY(90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
+              ></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-center self-center`}
+              ></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
+              ></div>
+            </div>
+          </div>
+
+          {/* Face 4 - Left (4 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateY(-90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            <div className="grid grid-cols-2 gap-4 w-full h-full p-3">
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
+              ></div>
+            </div>
+          </div>
+
+          {/* Face 5 - Top (5 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateX(90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
+              ></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
+              ></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-center self-center`}
+              ></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
+              ></div>
+              <div></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
+              ></div>
+            </div>
+          </div>
+
+          {/* Face 6 - Bottom (6 dots) */}
+          <div
+            className="absolute bg-gradient-to-br from-gray-200 to-gray-300 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            style={{
+              width: `${cubeSize}px`,
+              height: `${cubeSize}px`,
+              transform: `rotateX(-90deg) translateZ(${cubeSize / 2}px)`,
+            }}
+          >
+            <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-center`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-center`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
+              ></div>
+              <div
+                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
+              ></div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
