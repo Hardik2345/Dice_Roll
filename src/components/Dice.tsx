@@ -17,6 +17,7 @@ export function Dice({
 }: DiceProps) {
   const [currentFace, setCurrentFace] = useState(1);
   const [rollResult, setRollResult] = useState<number | null>(null);
+  const [isSettling, setIsSettling] = useState(false);
 
   const sizeClasses = {
     small: "w-16 h-16",
@@ -32,29 +33,22 @@ export function Dice({
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
 
-  // Define rotation transforms for each face to be visible
-  const getFaceTransform = (face: number) => {
-    switch (face) {
-      case 1: return "rotateX(0deg) rotateY(0deg)"; // Front face
-      case 2: return "rotateX(0deg) rotateY(180deg)"; // Back face
-      case 3: return "rotateX(0deg) rotateY(-90deg)"; // Right face
-      case 4: return "rotateX(0deg) rotateY(90deg)"; // Left face
-      case 5: return "rotateX(-90deg) rotateY(0deg)"; // Top face
-      case 6: return "rotateX(90deg) rotateY(0deg)"; // Bottom face
-      default: return "rotateX(0deg) rotateY(0deg)";
-    }
-  };
-
   // Handle rolling animation with random face changes
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
     if (isRolling) {
       setRollResult(null);
+      setIsSettling(false);
       // Change faces rapidly during roll
       interval = setInterval(() => {
         setCurrentFace(Math.floor(Math.random() * 6) + 1);
       }, 100);
+      
+      // Start settling phase (blur) before final result
+      setTimeout(() => {
+        setIsSettling(true);
+      }, 1700);
       
       // Stop rolling and set final result
       setTimeout(() => {
@@ -62,6 +56,7 @@ export function Dice({
         const result = finalValue || Math.floor(Math.random() * 6) + 1;
         setCurrentFace(result);
         setRollResult(result);
+        setIsSettling(false);
         onRollComplete?.(result);
       }, 2000);
     }
@@ -173,17 +168,17 @@ export function Dice({
         }}
       >
         <div
-          className={`relative transition-transform duration-300 ease-out ${
+          className={`relative transition-all duration-300 ease-out ${
             isRolling ? "animate-dice-roll" : ""
-          }`}
+          } ${isSettling ? "blur-sm" : ""}`}
           style={{
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling ? "" : getFaceTransform(currentFace),
+            transform: isRolling ? "" : "rotateX(-15deg) rotateY(25deg)",
           }}
         >
-          {/* Face 1 - Front (1 dot) */}
+          {/* Single visible face that changes during animation */}
           <div
             className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
             style={{
@@ -192,67 +187,7 @@ export function Dice({
               transform: `translateZ(${cubeSize / 2}px)`,
             }}
           >
-            {renderDots(1)}
-          </div>
-
-          {/* Face 2 - Back (2 dots) */}
-          <div
-            className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
-            style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `translateZ(-${cubeSize / 2}px) rotateY(180deg)`,
-            }}
-          >
-            {renderDots(2)}
-          </div>
-
-          {/* Face 3 - Right (3 dots) */}
-          <div
-            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
-            style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateY(90deg) translateZ(${cubeSize / 2}px)`,
-            }}
-          >
-            {renderDots(3)}
-          </div>
-
-          {/* Face 4 - Left (4 dots) */}
-          <div
-            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
-            style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateY(-90deg) translateZ(${cubeSize / 2}px)`,
-            }}
-          >
-            {renderDots(4)}
-          </div>
-
-          {/* Face 5 - Top (5 dots) */}
-          <div
-            className="absolute bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
-            style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateX(90deg) translateZ(${cubeSize / 2}px)`,
-            }}
-          >
-            {renderDots(5)}
-          </div>
-
-          {/* Face 6 - Bottom (6 dots) */}
-          <div
-            className="absolute bg-gradient-to-br from-gray-200 to-gray-300 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
-            style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateX(-90deg) translateZ(${cubeSize / 2}px)`,
-            }}
-          >
-            {renderDots(6)}
+            {renderDots(currentFace)}
           </div>
         </div>
       </div>
