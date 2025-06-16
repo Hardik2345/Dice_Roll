@@ -14,6 +14,7 @@ export function Dice({
   result,
 }: DiceProps) {
   const [finalRotation, setFinalRotation] = useState({ x: -15, y: 25 });
+  const [isSettling, setIsSettling] = useState(false);
 
   const sizeClasses = {
     small: "w-16 h-16",
@@ -41,21 +42,39 @@ export function Dice({
 
   useEffect(() => {
     if (isRolling && result) {
+      // Reset settling state
+      setIsSettling(false);
+
       // When rolling starts with a specific result, use that
       const rotation = faceRotations[result - 1];
+
+      // Start settling phase (blur) before final result
+      // setTimeout(() => {
+      //   setIsSettling(true);
+      // }, 1700);
 
       // Set a timeout to apply the rotation after the animation
       setTimeout(() => {
         setFinalRotation(rotation);
+        // setIsSettling(false);
       }, 1900); // Apply just before animation ends
     } else if (isRolling) {
+      // Reset settling state
+      setIsSettling(false);
+
       // When rolling starts without a specific result, generate random face
       const randomFace = Math.floor(Math.random() * 6);
       const rotation = faceRotations[randomFace];
 
+      // Start settling phase (blur) before final result
+      // setTimeout(() => {
+      //   setIsSettling(true);
+      // }, 1700);
+
       // Set a timeout to apply the rotation after the animation
       setTimeout(() => {
         setFinalRotation(rotation);
+        setIsSettling(false);
       }, 1900); // Apply just before animation ends
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,6 +82,22 @@ export function Dice({
 
   return (
     <div className="relative flex items-center justify-center">
+      {/* Add CSS for continuous vertical axis rotation */}
+      <style jsx>{`
+        @keyframes continuousVerticalRotation {
+          from {
+            transform: rotateX(-15deg) rotateY(25deg) rotateZ(0deg);
+          }
+          to {
+            transform: rotateX(345deg) rotateY(25deg) rotateZ(0deg);
+          }
+        }
+
+        .continuous-vertical-rotation {
+          animation: continuousVerticalRotation 0.4s linear infinite;
+        }
+      `}</style>
+
       {/* Sparkles */}
       {showSparkles && (
         <>
@@ -83,24 +118,28 @@ export function Dice({
 
       {/* 3D Dice Container */}
       <div
-        className="relative"
+        className="relative dice-container"
         style={{
           perspective: "1000px",
           width: `${cubeSize}px`,
           height: `${cubeSize}px`,
+          transformStyle: "preserve-3d",
         }}
       >
         <div
-          className={`relative transition-transform ${
-            isRolling ? "duration-[2000ms]" : "duration-300"
-          } ease-out`}
+          className={`relative transition-all ${
+            isRolling && !isSettling ? "continuous-vertical-rotation" : ""
+          } ${isRolling && !isSettling ? "" : "duration-300"} ease-out ${
+            isSettling ? "blur-sm" : ""
+          }`}
           style={{
             transformStyle: "preserve-3d",
             width: `${cubeSize}px`,
             height: `${cubeSize}px`,
-            transform: isRolling
-              ? "rotateX(720deg) rotateY(720deg) rotateZ(720deg)"
-              : `rotateX(${finalRotation.x}deg) rotateY(${finalRotation.y}deg)`,
+            transform:
+              isRolling && !isSettling
+                ? undefined // Let CSS animation handle the transform
+                : `rotateX(${finalRotation.x}deg) rotateY(${finalRotation.y}deg)`,
           }}
         >
           {/* Face 1 - Front (1 dot) */}
@@ -250,21 +289,6 @@ export function Dice({
             </div>
           </div>
         </div>
-
-        {/* Dynamic Shadow */}
-        <div
-          className={`absolute bg-black/30 rounded-full transition-all duration-2000 ${
-            isRolling ? "animate-pulse scale-110" : "scale-100"
-          }`}
-          style={{
-            width: `${cubeSize * 0.8}px`,
-            height: `${cubeSize * 0.3}px`,
-            left: "50%",
-            top: `${cubeSize + 10}px`,
-            transform: "translateX(-50%)",
-            filter: "blur(8px)",
-          }}
-        ></div>
       </div>
     </div>
   );

@@ -69,6 +69,44 @@ const hashMobile = async (mobile) => {
   return await bcrypt.hash(mobile, 10);
 };
 
+// Weighted dice roll function
+function getWeightedDiceResult() {
+  // Define probabilities for each face
+  const probabilities = [
+    { face: 1, weight: 50 }, // 50% chance (adjusted from 40% to make total 100%)
+    { face: 2, weight: 18 }, // 18% chance
+    { face: 3, weight: 20 }, // 20% chance
+    { face: 4, weight: 5 }, // 5% chance
+    { face: 5, weight: 5 }, // 5% chance
+    { face: 6, weight: 2 }, // 2% chance
+  ];
+
+  // Calculate cumulative weights
+  let cumulativeWeights = [];
+  let totalWeight = 0;
+
+  for (let i = 0; i < probabilities.length; i++) {
+    totalWeight += probabilities[i].weight;
+    cumulativeWeights.push({
+      face: probabilities[i].face,
+      cumWeight: totalWeight,
+    });
+  }
+
+  // Generate random number between 0 and totalWeight
+  const random = Math.random() * totalWeight;
+
+  // Find which face to return based on the random number
+  for (let i = 0; i < cumulativeWeights.length; i++) {
+    if (random <= cumulativeWeights[i].cumWeight) {
+      return cumulativeWeights[i].face;
+    }
+  }
+
+  // Fallback (should never reach here)
+  return 1;
+}
+
 // Routes
 
 // Send OTP endpoint
@@ -82,6 +120,19 @@ app.post("/api/send-otp", async (req, res) => {
 
     // Check if user has already played
     const existingUsers = await User.find({});
+    const mobileHash = await hashMobile(mobile);
+    let user = await User.findOne({ mobileHash });
+
+    if (user) {
+      await User.create({
+        mobileHash,
+        name,
+        discountCode: generateDiscountCode(),
+        diceResult: Math.floor(Math.random() * 6) + 1,
+        generateOTPAt: new Date(), // ✅ timestamp set here
+        // playedAt will automatically be set due to default
+      });
+    }
 
     for (let user of existingUsers) {
       const isMatch = await bcrypt.compare(mobile, user.mobileHash);
@@ -111,13 +162,17 @@ app.post("/api/send-otp", async (req, res) => {
 });
 
 // Verify OTP endpoint
-app.post("/api/verify-otp", (req, res) => {
+app.post("/api/verify-otp", async (req, res) => {
   console.log("Verify OTP called with:", req.body);
   console.log("Session ID:", req.sessionID);
   console.log("User info in session:", req.session.userInfo);
 
   try {
     const { otp } = req.body;
+
+    // const mobileHash = await hashMobile(mobile);
+
+    // let user = await User.findOne({ mobileHash });
 
     if (!req.session.userInfo) {
       console.log("ERROR: No user info in session!");
@@ -135,6 +190,9 @@ app.post("/api/verify-otp", (req, res) => {
         HARDCODED_OTP
       );
       return res.status(400).json({ error: "Invalid OTP" });
+    } else {
+      // user.enteredOTPAt = new Date(); // ✅ record OTP entered time
+      // await user.save();
     }
 
     // Mark session as verified
@@ -174,8 +232,8 @@ app.post("/api/roll-dice", async (req, res) => {
       }
     }
 
-    // Generate dice result (1-6)
-    const diceResult = Math.floor(Math.random() * 6) + 1;
+    // Generate weighted dice result (1-6)
+    const diceResult = getWeightedDiceResult(); // CHANGED: Using weighted function instead of Math.random
 
     // Create discount in Shopify
     let shopifyDiscount;
@@ -198,7 +256,7 @@ app.post("/api/roll-dice", async (req, res) => {
       // Fallback to local discount code if Shopify fails
       const discountInfo = DISCOUNT_CODES[diceResult];
       shopifyDiscount = {
-        code: `${discountInfo.code}_${Date.now()}`,
+        code: `${discountInfo.code}_${mobile}`,
         percentage: parseInt(discountInfo.discount),
         priceRuleId: null,
         discountCodeId: null,
@@ -219,7 +277,7 @@ app.post("/api/roll-dice", async (req, res) => {
       shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
       isShopifyCode: useShopify,
     });
-
+    newUser.enteredOTPAt = new Date(); // ✅ timestamp for OTP entry
     await newUser.save();
 
     // Clear session
@@ -324,6 +382,40 @@ app.get("/api/admin/stats", async (req, res) => {
     console.error("Stats error:", error);
     res.status(500).json({ error: "Failed to get statistics" });
   }
+});
+
+// Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
+app.get("/api/test-dice-distribution", (req, res) => {
+  const iterations = parseInt(req.query.iterations) || 10000;
+  const results = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+  for (let i = 0; i < iterations; i++) {
+    const result = getWeightedDiceResult();
+    results[result]++;
+  }
+
+  const distribution = {};
+  for (let face = 1; face <= 6; face++) {
+    distribution[face] = {
+      count: results[face],
+      percentage: ((results[face] / iterations) * 100).toFixed(2) + "%",
+      expected: {
+        1: "50%",
+        2: "18%",
+        3: "20%",
+        4: "5%",
+        5: "5%",
+        6: "2%",
+      }[face],
+    };
+  }
+
+  res.json({
+    totalRolls: iterations,
+    distribution,
+    expectedAvgDiscount: "16.7%",
+    note: "Remove this endpoint in production",
+  });
 });
 
 // Cleanup old/unused discounts (run as a scheduled job)

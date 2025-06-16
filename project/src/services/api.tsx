@@ -109,7 +109,9 @@ const apiService = {
     api.post<SendOTPResponse>("/api/send-otp", data),
 
   verifyOTP: (otp: string) =>
-    api.post<VerifyOTPResponse>("/api/verify-otp", { otp }),
+    api.post<VerifyOTPResponse>("/api/verify-otp", {
+      otp,
+    }),
 
   rollDice: () => api.post<RollDiceResponse>("/api/roll-dice"),
 

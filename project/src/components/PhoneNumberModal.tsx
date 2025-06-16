@@ -31,7 +31,11 @@ export function PhoneNumberModal() {
 
     try {
       // Call backend to send OTP
-      const response = await api.sendOTP({ name, mobile: phone });
+      const response = await api.sendOTP({
+        name,
+        mobile: phone,
+        generateOTPAt: Date.now,
+      });
 
       if (response.data.success) {
         // Store phone number and name in context
