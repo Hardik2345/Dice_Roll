@@ -29,6 +29,9 @@ export function Dice({
   };
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
+  const halfSize = cubeSize / 2;
+  // Add slight overlap to prevent gaps
+  const overlap = 0.5;
 
   // Define rotations for each face to be on top
   const faceRotations = [
@@ -48,15 +51,9 @@ export function Dice({
       // When rolling starts with a specific result, use that
       const rotation = faceRotations[result - 1];
 
-      // Start settling phase (blur) before final result
-      // setTimeout(() => {
-      //   setIsSettling(true);
-      // }, 1700);
-
       // Set a timeout to apply the rotation after the animation
       setTimeout(() => {
         setFinalRotation(rotation);
-        // setIsSettling(false);
       }, 1900); // Apply just before animation ends
     } else if (isRolling) {
       // Reset settling state
@@ -65,11 +62,6 @@ export function Dice({
       // When rolling starts without a specific result, generate random face
       const randomFace = Math.floor(Math.random() * 6);
       const rotation = faceRotations[randomFace];
-
-      // Start settling phase (blur) before final result
-      // setTimeout(() => {
-      //   setIsSettling(true);
-      // }, 1700);
 
       // Set a timeout to apply the rotation after the animation
       setTimeout(() => {
@@ -146,9 +138,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `translateZ(${cubeSize / 2}px)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `translateZ(${halfSize}px)`,
               background: `linear-gradient(135deg, 
                 #ffffff 0%, 
                 #f8f9fa 25%, 
@@ -157,7 +151,7 @@ export function Dice({
                 #ced4da 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.1),
                 inset -4px -4px 8px rgba(255,255,255,0.8),
                 0 8px 16px rgba(0,0,0,0.2)
@@ -184,9 +178,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `translateZ(-${cubeSize / 2}px) rotateY(180deg)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `translateZ(-${halfSize}px) rotateY(180deg)`,
               background: `linear-gradient(135deg, 
                 #f8f9fa 0%, 
                 #e9ecef 25%, 
@@ -195,7 +191,7 @@ export function Dice({
                 #adb5bd 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.15),
                 inset -4px -4px 8px rgba(255,255,255,0.6),
                 0 8px 16px rgba(0,0,0,0.2)
@@ -234,9 +230,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateY(90deg) translateZ(${cubeSize / 2}px)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `rotateY(90deg) translateZ(${halfSize}px)`,
               background: `linear-gradient(135deg, 
                 #e9ecef 0%, 
                 #dee2e6 25%, 
@@ -245,7 +243,7 @@ export function Dice({
                 #95a5a6 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.2),
                 inset -4px -4px 8px rgba(255,255,255,0.4),
                 0 8px 16px rgba(0,0,0,0.2)
@@ -303,9 +301,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateY(-90deg) translateZ(${cubeSize / 2}px)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `rotateY(-90deg) translateZ(${halfSize}px)`,
               background: `linear-gradient(135deg, 
                 #e9ecef 0%, 
                 #dee2e6 25%, 
@@ -314,7 +314,7 @@ export function Dice({
                 #95a5a6 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.2),
                 inset -4px -4px 8px rgba(255,255,255,0.4),
                 0 8px 16px rgba(0,0,0,0.2)
@@ -377,9 +377,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateX(90deg) translateZ(${cubeSize / 2}px)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `rotateX(90deg) translateZ(${halfSize}px)`,
               background: `linear-gradient(135deg, 
                 #ffffff 0%, 
                 #f8f9fa 25%, 
@@ -388,7 +390,7 @@ export function Dice({
                 #ced4da 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.1),
                 inset -4px -4px 8px rgba(255,255,255,0.8),
                 0 8px 16px rgba(0,0,0,0.2)
@@ -466,9 +468,11 @@ export function Dice({
           <div
             className="absolute dice-face"
             style={{
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transform: `rotateX(-90deg) translateZ(${cubeSize / 2}px)`,
+              width: `${cubeSize + overlap}px`,
+              height: `${cubeSize + overlap}px`,
+              left: `-${overlap/2}px`,
+              top: `-${overlap/2}px`,
+              transform: `rotateX(-90deg) translateZ(${halfSize}px)`,
               background: `linear-gradient(135deg, 
                 #dee2e6 0%, 
                 #ced4da 25%, 
@@ -477,7 +481,7 @@ export function Dice({
                 #7f8c8d 100%)`,
               borderRadius: '12px',
               boxShadow: `
-                inset 0 0 0 2px rgba(0,0,0,0.1),
+                0 0 0 1px rgba(0,0,0,0.05),
                 inset 4px 4px 8px rgba(0,0,0,0.25),
                 inset -4px -4px 8px rgba(255,255,255,0.3),
                 0 8px 16px rgba(0,0,0,0.2)
