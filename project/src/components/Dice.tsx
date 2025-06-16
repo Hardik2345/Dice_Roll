@@ -23,9 +23,9 @@ export function Dice({
   };
 
   const dotSizes = {
-    small: "w-1.5 h-1.5",
-    medium: "w-2 h-2",
-    large: "w-2.5 h-2.5 md:w-3 md:h-3",
+    small: "w-2 h-2",
+    medium: "w-3 h-3",
+    large: "w-4 h-4 md:w-5 md:h-5",
   };
 
   const cubeSize = size === "small" ? 64 : size === "medium" ? 96 : 128;
@@ -144,149 +144,418 @@ export function Dice({
         >
           {/* Face 1 - Front (1 dot) */}
           <div
-            className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `translateZ(${cubeSize / 2}px)`,
+              background: `linear-gradient(135deg, 
+                #ffffff 0%, 
+                #f8f9fa 25%, 
+                #e9ecef 50%, 
+                #dee2e6 75%, 
+                #ced4da 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.1),
+                inset -4px -4px 8px rgba(255,255,255,0.8),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            <div className={`${dotSizes[size]} bg-gray-800 rounded-full`}></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
 
           {/* Face 2 - Back (2 dots) */}
           <div
-            className="absolute bg-gradient-to-br from-white to-gray-100 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `translateZ(-${cubeSize / 2}px) rotateY(180deg)`,
+              background: `linear-gradient(135deg, 
+                #f8f9fa 0%, 
+                #e9ecef 25%, 
+                #dee2e6 50%, 
+                #ced4da 75%, 
+                #adb5bd 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.15),
+                inset -4px -4px 8px rgba(255,255,255,0.6),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px'
             }}
           >
-            <div className="flex justify-between items-center w-full h-full p-3">
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full self-start`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full self-end`}
-              ></div>
-            </div>
+            <div 
+              className={`${dotSizes[size]} rounded-full self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
 
           {/* Face 3 - Right (3 dots) */}
           <div
-            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `rotateY(90deg) translateZ(${cubeSize / 2}px)`,
+              background: `linear-gradient(135deg, 
+                #e9ecef 0%, 
+                #dee2e6 25%, 
+                #ced4da 50%, 
+                #adb5bd 75%, 
+                #95a5a6 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.2),
+                inset -4px -4px 8px rgba(255,255,255,0.4),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '8px',
+              padding: '12px',
+              alignItems: 'center',
+              justifyItems: 'center'
             }}
           >
-            <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
-              ></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-center self-center`}
-              ></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
-              ></div>
-            </div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-center self-center`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
 
           {/* Face 4 - Left (4 dots) */}
           <div
-            className="absolute bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `rotateY(-90deg) translateZ(${cubeSize / 2}px)`,
+              background: `linear-gradient(135deg, 
+                #e9ecef 0%, 
+                #dee2e6 25%, 
+                #ced4da 50%, 
+                #adb5bd 75%, 
+                #95a5a6 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.2),
+                inset -4px -4px 8px rgba(255,255,255,0.4),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+              padding: '16px',
+              alignItems: 'center',
+              justifyItems: 'center'
             }}
           >
-            <div className="grid grid-cols-2 gap-4 w-full h-full p-3">
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
-              ></div>
-            </div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
 
           {/* Face 5 - Top (5 dots) */}
           <div
-            className="absolute bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `rotateX(90deg) translateZ(${cubeSize / 2}px)`,
+              background: `linear-gradient(135deg, 
+                #ffffff 0%, 
+                #f8f9fa 25%, 
+                #e9ecef 50%, 
+                #dee2e6 75%, 
+                #ced4da 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.1),
+                inset -4px -4px 8px rgba(255,255,255,0.8),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '8px',
+              padding: '12px',
+              alignItems: 'center',
+              justifyItems: 'center'
             }}
           >
-            <div className="grid grid-cols-3 gap-2 w-full h-full p-2">
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
-              ></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
-              ></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-center self-center`}
-              ></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
-              ></div>
-              <div></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
-              ></div>
-            </div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-center self-center`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
 
           {/* Face 6 - Bottom (6 dots) */}
           <div
-            className="absolute bg-gradient-to-br from-gray-200 to-gray-300 border-2 border-gray-400 rounded-lg shadow-lg flex items-center justify-center dice-face"
+            className="absolute dice-face"
             style={{
               width: `${cubeSize}px`,
               height: `${cubeSize}px`,
               transform: `rotateX(-90deg) translateZ(${cubeSize / 2}px)`,
+              background: `linear-gradient(135deg, 
+                #dee2e6 0%, 
+                #ced4da 25%, 
+                #adb5bd 50%, 
+                #95a5a6 75%, 
+                #7f8c8d 100%)`,
+              borderRadius: '12px',
+              boxShadow: `
+                inset 0 0 0 2px rgba(0,0,0,0.1),
+                inset 4px 4px 8px rgba(0,0,0,0.25),
+                inset -4px -4px 8px rgba(255,255,255,0.3),
+                0 8px 16px rgba(0,0,0,0.2)
+              `,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '8px',
+              padding: '12px',
+              alignItems: 'center',
+              justifyItems: 'center'
             }}
           >
-            <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-start`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-start`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-center`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-center`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-start self-end`}
-              ></div>
-              <div
-                className={`${dotSizes[size]} bg-gray-800 rounded-full justify-self-end self-end`}
-              ></div>
-            </div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-start`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-center`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-center`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-start self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
+            <div 
+              className={`${dotSizes[size]} rounded-full justify-self-end self-end`}
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a)',
+                boxShadow: `
+                  inset 2px 2px 4px rgba(0,0,0,0.8),
+                  inset -1px -1px 2px rgba(255,255,255,0.1),
+                  0 2px 4px rgba(0,0,0,0.3)
+                `
+              }}
+            ></div>
           </div>
         </div>
       </div>
