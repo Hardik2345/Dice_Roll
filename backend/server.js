@@ -42,9 +42,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // required for cookies to be sent over HTTPS
-      httpOnly: false,
-      sameSite: "lax", // required for cross-site cookies
+      secure: true, // required for cookies to be sent over HTTPS
+      httpOnly: true,
+      sameSite: "none", // required for cross-site cookies
       maxAge: 1000 * 60 * 30, // 30 minutes
     },
     name: "dice-roll-session",
