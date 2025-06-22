@@ -29,7 +29,7 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"], // include any custom headers used
 };
 
-app.use("/api", cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Handle preflight requests
 // app.options('*', cors());
