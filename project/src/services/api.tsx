@@ -64,7 +64,7 @@ interface CustomAxiosError extends AxiosError {
 }
 
 // API URL configuration
-const API_URL: string = "https://dice-1-ttat.onrender.com";
+const API_URL: string = "https://dice-roll-673j.onrender.com";
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
