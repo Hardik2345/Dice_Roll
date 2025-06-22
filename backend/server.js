@@ -16,21 +16,23 @@ app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
 
 const allowedOrigins = ["https://dice-roll-app.myshopify.com"];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // optional, if you're using cookies
-  })
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // if using cookies or auth headers
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // explicitly allow these
+  allowedHeaders: ["Content-Type", "Authorization"], // include any custom headers used
+};
+
+app.use(cors(corsOptions));
 
 // Handle preflight requests
-app.options("*", cors());
+// app.options('*', cors());
 
 app.use(express.json());
 app.use(
