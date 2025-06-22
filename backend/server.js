@@ -123,33 +123,42 @@ app.post("/api/send-otp", async (req, res) => {
       return res.status(400).json({ error: "Name and mobile number required" });
     }
 
+    // Check if user has already played
+    const existingUsers = await User.find({});
     const mobileHash = await hashMobile(mobile);
-    const existingUser = await User.findOne({ mobileHash });
+    let user = await User.findOne({ mobileHash });
 
-    if (existingUser) {
-      return res.status(400).json({
-        error: "You have already played this game!",
-        alreadyPlayed: true,
+    if (user) {
+      await User.create({
+        mobileHash,
+        name,
+        discountCode: generateDiscountCode(),
+        diceResult: Math.floor(Math.random() * 6) + 1,
+        generateOTPAt: new Date(), // ✅ timestamp set here
+        // playedAt will automatically be set due to default
       });
     }
 
-    await User.create({
-      mobileHash,
-      name,
-      discountCode: generateDiscountCode(),
-      diceResult: Math.floor(Math.random() * 6) + 1,
-      generateOTPAt: new Date(),
-    });
+    for (let user of existingUsers) {
+      const isMatch = await bcrypt.compare(mobile, user.mobileHash);
+      if (isMatch) {
+        return res.status(400).json({
+          error: "You have already played this game!",
+          alreadyPlayed: true,
+        });
+      }
+    }
 
-    // 🧪 TEMPORARY: Comment this out to confirm the issue
-    // req.session.userInfo = { name, mobile };
+    // Store user info in session
+    req.session.userInfo = { name, mobile };
 
+    // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
 
-    return res.json({
+    res.json({
       success: true,
       message: "OTP sent successfully",
-      debug: "Use OTP: 123456",
+      debug: "Use OTP: 123456", // Remove in production
     });
   } catch (error) {
     console.error("Send OTP error:", error);
