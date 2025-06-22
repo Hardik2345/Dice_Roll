@@ -14,20 +14,23 @@ const shopifyService = new ShopifyService();
 
 app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
 
-// const allowedOrigins = [
-//   'https://your-production-site.vercel.app',
-//   'https://your-custom-domain.com',
-//   /^https:\/\/.*\.vercel\.app$/
-// ];
+const allowedOrigins = ["https://dice-roll-app.myshopify.com"];
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // Change to your frontend URL in production
-    credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // optional, if you're using cookies
   })
 );
+
+// Handle preflight requests
+app.options("*", cors());
 
 app.use(express.json());
 app.use(
