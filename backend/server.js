@@ -35,6 +35,8 @@ app.use(cors(corsOptions));
 // app.options('*', cors());
 
 app.use(express.json());
+
+app.options("/api/send-otp", cors(corsOptions));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dice-roll-secret",
