@@ -126,7 +126,6 @@ app.post("/api/send-otp", async (req, res) => {
     const mobileHash = await hashMobile(mobile);
     const existingUser = await User.findOne({ mobileHash });
 
-    // ❗ Case 1: User has already played
     if (existingUser) {
       return res.status(400).json({
         error: "You have already played this game!",
@@ -134,7 +133,6 @@ app.post("/api/send-otp", async (req, res) => {
       });
     }
 
-    // ❗ Case 2: Create new user
     await User.create({
       mobileHash,
       name,
@@ -143,10 +141,9 @@ app.post("/api/send-otp", async (req, res) => {
       generateOTPAt: new Date(),
     });
 
-    // ✅ Store user info in session
-    req.session.userInfo = { name, mobile };
+    // 🧪 TEMPORARY: Comment this out to confirm the issue
+    // req.session.userInfo = { name, mobile };
 
-    // ✅ Mock OTP log
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
 
     return res.json({
