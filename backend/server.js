@@ -14,7 +14,7 @@ const shopifyService = new ShopifyService();
 
 app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
 
-const allowedOrigins = ["https://blabliblulife.com/pages/roll-the-dice-smell-the-surprise?pb=0"];
+const allowedOrigins = ["https://blabliblulife.com"];
 
 const corsOptions = {
   origin: function (origin, callback) {
