@@ -4,17 +4,27 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const axios = require("axios");
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 const User = require("./models/User");
+const FunnelEvent = require("./models/FunnelEvent");
 const ShopifyService = require("./shopifyService");
+
+const allowedOrigins = ["http://localhost:5173"];
 
 const app = express();
 const shopifyService = new ShopifyService();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  },
+});
 
 app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
-
-const allowedOrigins = ["http://localhost:5173"];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -144,6 +154,13 @@ app.post("/api/send-otp", async (req, res) => {
     // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
 
+    // Log funnel event: entered
+    await FunnelEvent.create({ mobile, name, eventType: "entered" });
+    io.emit("funnelEventUpdate");
+    // Log funnel event: otp_sent
+    await FunnelEvent.create({ mobile, name, eventType: "otp_sent" });
+    io.emit("funnelEventUpdate");
+
     res.json({
       success: true,
       message: "OTP sent successfully",
@@ -189,6 +206,13 @@ app.post("/api/verify-otp", async (req, res) => {
       req.session.verified = true;
       req.session.enteredOTPAt = new Date(); // Track OTP entered time
       console.log("SUCCESS: OTP verified!");
+      // Log funnel event: otp_verified
+      await FunnelEvent.create({
+        mobile: req.session.userInfo.mobile,
+        name: req.session.userInfo.name,
+        eventType: "otp_verified",
+      });
+      io.emit("funnelEventUpdate");
     }
 
     res.json({
@@ -259,21 +283,45 @@ app.post("/api/roll-dice", async (req, res) => {
     // Hash mobile number for storage
     const mobileHash = await hashMobile(mobile);
 
-    // Save user record with all timestamps in correct order
-    const newUser = new User({
-      mobileHash,
+    // Save user record with Shopify details
+    let user = await User.findOne({ name, mobileHash });
+    if (!user) {
+      user = new User({
+        mobileHash,
+        name,
+        discountCode: shopifyDiscount.code,
+        diceResult,
+        shopifyPriceRuleId: shopifyDiscount.priceRuleId,
+        shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
+        isShopifyCode: useShopify,
+        generateOTPAt: req.session.generateOTPAt,
+        enteredOTPAt: req.session.enteredOTPAt,
+        rollDiceAt: new Date(), // Track when dice is rolled
+        playedAt: req.session.playedAt,
+      });
+      await user.save();
+    } else {
+      user.discountCode = shopifyDiscount.code;
+      user.diceResult = diceResult;
+      user.shopifyPriceRuleId = shopifyDiscount.priceRuleId;
+      user.shopifyDiscountCodeId = shopifyDiscount.discountCodeId;
+      user.isShopifyCode = useShopify;
+      user.generateOTPAt = req.session.generateOTPAt;
+      user.enteredOTPAt = req.session.enteredOTPAt;
+      user.rollDiceAt = new Date();
+      user.playedAt = req.session.playedAt;
+      await user.save();
+    }
+    // Log funnel event: dice_rolled
+    await FunnelEvent.create({
+      mobile,
       name,
-      discountCode: shopifyDiscount.code,
-      diceResult,
-      shopifyPriceRuleId: shopifyDiscount.priceRuleId,
-      shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
-      isShopifyCode: useShopify,
-      generateOTPAt: req.session.generateOTPAt,
-      enteredOTPAt: req.session.enteredOTPAt,
-      rollDiceAt: new Date(), // Track when dice is rolled
-      playedAt: req.session.playedAt, // Set playedAt from session
+      eventType: "dice_rolled",
+      userId: user._id,
     });
-    await newUser.save();
+    io.emit("funnelEventUpdate");
+    // Always update all funnel events for this mobile with the correct userId and name
+    await FunnelEvent.updateMany({ mobile }, { userId: user._id, name });
 
     // Clear session
     req.session.destroy();
@@ -306,6 +354,14 @@ app.post("/api/mark-discount-used", async (req, res) => {
     }
     user.discountUsedAt = new Date();
     await user.save();
+    // Log funnel event: discount_used
+    await FunnelEvent.create({
+      mobile: user.mobileHash,
+      name: user.name,
+      eventType: "discount_used",
+      userId: user._id,
+    });
+    io.emit("funnelEventUpdate");
     res.json({ success: true, message: "Discount usage recorded" });
   } catch (error) {
     res.status(500).json({ error: "Failed to mark discount as used" });
@@ -449,6 +505,44 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
   }
 });
 
+// Admin funnel stats endpoint with optional mobile search
+app.get("/api/admin/funnel-stats", async (req, res) => {
+  try {
+    const { startDate, endDate, mobile } = req.query;
+    if (!startDate || !endDate) {
+      return res
+        .status(400)
+        .json({ error: "startDate and endDate are required" });
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const eventTypes = [
+      "entered",
+      "otp_sent",
+      "otp_verified",
+      "dice_rolled",
+      "discount_used",
+    ];
+    const stats = {};
+    const mobileFilter = mobile
+      ? { mobile: { $regex: mobile, $options: "i" } }
+      : {};
+    for (const eventType of eventTypes) {
+      const events = await FunnelEvent.find({
+        eventType,
+        timestamp: { $gte: start, $lte: end },
+        ...mobileFilter,
+      }).sort({ timestamp: -1 });
+      stats[eventType] = { count: events.length, events };
+    }
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch funnel stats" });
+  }
+});
+
 // Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
 app.get("/api/test-dice-distribution", (req, res) => {
   const iterations = parseInt(req.query.iterations) || 10000;
@@ -562,15 +656,27 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
     // Shopify sends the payload as JSON
     const { discount_code } = req.body;
     if (!discount_code) {
-      return res.status(400).json({ error: "Missing discount_code in webhook payload" });
+      return res
+        .status(400)
+        .json({ error: "Missing discount_code in webhook payload" });
     }
     // Find the user by discount code
     const user = await User.findOne({ discountCode: discount_code });
     if (!user) {
-      return res.status(404).json({ error: "User not found for this discount code" });
+      return res
+        .status(404)
+        .json({ error: "User not found for this discount code" });
     }
     user.discountUsedAt = new Date();
     await user.save();
+    // Log funnel event: discount_used
+    await FunnelEvent.create({
+      mobile: user.mobileHash,
+      name: user.name,
+      eventType: "discount_used",
+      userId: user._id,
+    });
+    io.emit("funnelEventUpdate");
     res.json({ success: true });
   } catch (error) {
     console.error("Shopify webhook error:", error);
@@ -580,7 +686,7 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 
   // Check if Shopify credentials are configured
