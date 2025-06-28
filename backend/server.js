@@ -12,7 +12,9 @@ const User = require("./models/User");
 const FunnelEvent = require("./models/FunnelEvent");
 const ShopifyService = require("./shopifyService");
 
-const allowedOrigins = ["http://localhost:5173"];
+const allowedOrigins = [
+  "https://vercel.com/hardiks-projects-4c8d6fa8/dice-roll-5wsv/2dqoSBx6u86n14St6hhfyVjkp43K",
+];
 
 const app = express();
 const shopifyService = new ShopifyService();
@@ -52,9 +54,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // required for cookies to be sent over HTTPS
-      httpOnly: false,
-      sameSite: "Lax", // required for cross-site cookies
+      secure: true, // required for cookies to be sent over HTTPS
+      httpOnly: true,
+      sameSite: "none", // required for cross-site cookies
       maxAge: 1000 * 60 * 30, // 30 minutes
     },
     name: "dice-roll-session",
