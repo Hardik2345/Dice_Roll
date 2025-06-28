@@ -1,10 +1,10 @@
-import { StrictMode } from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
+import Root from "./Root";
 import "./index.css";
 
-createRoot(document.getElementById("dice-roll-root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <Root />
+  </React.StrictMode>
 );

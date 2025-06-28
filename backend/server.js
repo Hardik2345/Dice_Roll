@@ -126,20 +126,6 @@ app.post("/api/send-otp", async (req, res) => {
 
     // Check if user has already played
     const existingUsers = await User.find({});
-    const mobileHash = await hashMobile(mobile);
-    let user = await User.findOne({ mobileHash });
-
-    if (user) {
-      await User.create({
-        mobileHash,
-        name,
-        discountCode: generateDiscountCode(),
-        diceResult: Math.floor(Math.random() * 6) + 1,
-        generateOTPAt: new Date(), // ✅ timestamp set here
-        // playedAt will automatically be set due to default
-      });
-    }
-
     for (let user of existingUsers) {
       const isMatch = await bcrypt.compare(mobile, user.mobileHash);
       if (isMatch) {
@@ -150,9 +136,10 @@ app.post("/api/send-otp", async (req, res) => {
       }
     }
 
-    // Store user info in session
+    // Store user info and OTP generation time in session
     req.session.userInfo = { name, mobile };
     req.session.generateOTPAt = new Date(); // Track OTP generation time
+    req.session.playedAt = new Date(); // Track when user enters
 
     // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
@@ -238,7 +225,7 @@ app.post("/api/roll-dice", async (req, res) => {
     }
 
     // Generate weighted dice result (1-6)
-    const diceResult = getWeightedDiceResult(); // CHANGED: Using weighted function instead of Math.random
+    const diceResult = getWeightedDiceResult();
 
     // Create discount in Shopify
     let shopifyDiscount;
@@ -272,7 +259,7 @@ app.post("/api/roll-dice", async (req, res) => {
     // Hash mobile number for storage
     const mobileHash = await hashMobile(mobile);
 
-    // Save user record with Shopify details
+    // Save user record with all timestamps in correct order
     const newUser = new User({
       mobileHash,
       name,
@@ -284,6 +271,7 @@ app.post("/api/roll-dice", async (req, res) => {
       generateOTPAt: req.session.generateOTPAt,
       enteredOTPAt: req.session.enteredOTPAt,
       rollDiceAt: new Date(), // Track when dice is rolled
+      playedAt: req.session.playedAt, // Set playedAt from session
     });
     await newUser.save();
 
@@ -565,6 +553,28 @@ app.get("/api/health", async (req, res) => {
       status: "error",
       error: error.message,
     });
+  }
+});
+
+// Shopify webhook endpoint to mark discount as used
+app.post("/api/shopify/webhook/discount-used", async (req, res) => {
+  try {
+    // Shopify sends the payload as JSON
+    const { discount_code } = req.body;
+    if (!discount_code) {
+      return res.status(400).json({ error: "Missing discount_code in webhook payload" });
+    }
+    // Find the user by discount code
+    const user = await User.findOne({ discountCode: discount_code });
+    if (!user) {
+      return res.status(404).json({ error: "User not found for this discount code" });
+    }
+    user.discountUsedAt = new Date();
+    await user.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Shopify webhook error:", error);
+    res.status(500).json({ error: "Failed to process webhook" });
   }
 });
 

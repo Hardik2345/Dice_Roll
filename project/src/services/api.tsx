@@ -58,13 +58,29 @@ interface HealthResponse {
   error?: string;
 }
 
+interface DashboardUser {
+  _id?: string;
+  name: string;
+  discountCode: string;
+  playedAt?: string;
+  enteredOTPAt?: string;
+  rollDiceAt?: string;
+  discountUsedAt?: string;
+}
+interface DashboardStats {
+  entered: { count: number; users: DashboardUser[] };
+  verified: { count: number; users: DashboardUser[] };
+  rolled: { count: number; users: DashboardUser[] };
+  usedDiscount: { count: number; users: DashboardUser[] };
+}
+
 // Extend AxiosError to include custom properties
 interface CustomAxiosError extends AxiosError {
   friendlyMessage?: string;
 }
 
 // API URL configuration
-const API_URL: string = "https://dice-roll-673j.onrender.com";
+const API_URL: string = "http://localhost:5001";
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -121,6 +137,11 @@ const apiService = {
     api.get<DiscountStatusResponse>(`/api/discount-status/${code}`),
 
   getHealth: () => api.get<HealthResponse>("/api/health"),
+
+  getDashboardStats: (startDate: string, endDate: string) =>
+    api.get<DashboardStats>("/api/admin/dashboard-stats", {
+      params: { startDate, endDate },
+    }),
 };
 
 // Export types for use in components
@@ -133,6 +154,8 @@ export type {
   DiscountStatusResponse,
   HealthResponse,
   CustomAxiosError,
+  DashboardUser,
+  DashboardStats,
 };
 
 export default apiService;
