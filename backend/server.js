@@ -410,6 +410,48 @@ app.get("/api/admin/stats", async (req, res) => {
   }
 });
 
+// Dashboard stats endpoint for admin
+app.get("/api/admin/dashboard-stats", async (req, res) => {
+  try {
+    // TODO: Add authentication for admin access
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "startDate and endDate are required" });
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    // Adjust end date to include the whole day
+    end.setHours(23, 59, 59, 999);
+
+    // Helper to build query for each event
+    const buildQuery = (field) => ({
+      [field]: { $gte: start, $lte: end }
+    });
+
+    // Get counts and user lists for each event
+    const [
+      enteredUsers,
+      verifiedUsers,
+      rolledUsers,
+      usedDiscountUsers
+    ] = await Promise.all([
+      User.find(buildQuery("playedAt")).select("name playedAt discountCode").sort({ playedAt: -1 }),
+      User.find(buildQuery("enteredOTPAt")).select("name enteredOTPAt discountCode").sort({ enteredOTPAt: -1 }),
+      User.find(buildQuery("rollDiceAt")).select("name rollDiceAt discountCode").sort({ rollDiceAt: -1 }),
+      User.find(buildQuery("discountUsedAt")).select("name discountUsedAt discountCode").sort({ discountUsedAt: -1 })
+    ]);
+
+    res.json({
+      entered: { count: enteredUsers.length, users: enteredUsers },
+      verified: { count: verifiedUsers.length, users: verifiedUsers },
+      rolled: { count: rolledUsers.length, users: rolledUsers },
+      usedDiscount: { count: usedDiscountUsers.length, users: usedDiscountUsers }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+});
+
 // Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
 app.get("/api/test-dice-distribution", (req, res) => {
   const iterations = parseInt(req.query.iterations) || 10000;
