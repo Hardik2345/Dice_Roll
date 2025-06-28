@@ -14,7 +14,7 @@ const shopifyService = new ShopifyService();
 
 app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
 
-const allowedOrigins = ["https://blabliblulife.com"];
+const allowedOrigins = ["http://localhost:5173"];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -42,9 +42,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true, // required for cookies to be sent over HTTPS
-      httpOnly: true,
-      sameSite: "none", // required for cross-site cookies
+      secure: false, // required for cookies to be sent over HTTPS
+      httpOnly: false,
+      sameSite: "Lax", // required for cross-site cookies
       maxAge: 1000 * 60 * 30, // 30 minutes
     },
     name: "dice-roll-session",
@@ -416,7 +416,9 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
     // TODO: Add authentication for admin access
     const { startDate, endDate } = req.query;
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: "startDate and endDate are required" });
+      return res
+        .status(400)
+        .json({ error: "startDate and endDate are required" });
     }
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -425,27 +427,34 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
 
     // Helper to build query for each event
     const buildQuery = (field) => ({
-      [field]: { $gte: start, $lte: end }
+      [field]: { $gte: start, $lte: end },
     });
 
     // Get counts and user lists for each event
-    const [
-      enteredUsers,
-      verifiedUsers,
-      rolledUsers,
-      usedDiscountUsers
-    ] = await Promise.all([
-      User.find(buildQuery("playedAt")).select("name playedAt discountCode").sort({ playedAt: -1 }),
-      User.find(buildQuery("enteredOTPAt")).select("name enteredOTPAt discountCode").sort({ enteredOTPAt: -1 }),
-      User.find(buildQuery("rollDiceAt")).select("name rollDiceAt discountCode").sort({ rollDiceAt: -1 }),
-      User.find(buildQuery("discountUsedAt")).select("name discountUsedAt discountCode").sort({ discountUsedAt: -1 })
-    ]);
+    const [enteredUsers, verifiedUsers, rolledUsers, usedDiscountUsers] =
+      await Promise.all([
+        User.find(buildQuery("playedAt"))
+          .select("name playedAt discountCode")
+          .sort({ playedAt: -1 }),
+        User.find(buildQuery("enteredOTPAt"))
+          .select("name enteredOTPAt discountCode")
+          .sort({ enteredOTPAt: -1 }),
+        User.find(buildQuery("rollDiceAt"))
+          .select("name rollDiceAt discountCode")
+          .sort({ rollDiceAt: -1 }),
+        User.find(buildQuery("discountUsedAt"))
+          .select("name discountUsedAt discountCode")
+          .sort({ discountUsedAt: -1 }),
+      ]);
 
     res.json({
       entered: { count: enteredUsers.length, users: enteredUsers },
       verified: { count: verifiedUsers.length, users: verifiedUsers },
       rolled: { count: rolledUsers.length, users: rolledUsers },
-      usedDiscount: { count: usedDiscountUsers.length, users: usedDiscountUsers }
+      usedDiscount: {
+        count: usedDiscountUsers.length,
+        users: usedDiscountUsers,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch dashboard stats" });
