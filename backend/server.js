@@ -687,6 +687,11 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   }
 });
 
+// Socket.io connection handler
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
