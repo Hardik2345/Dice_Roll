@@ -46,6 +46,9 @@ const userSchema = new mongoose.Schema({
   rollDiceAt: {
     type: Date,
   },
+  discountUsedAt: {
+    type: Date,
+  },
 });
 
 // Index for faster queries

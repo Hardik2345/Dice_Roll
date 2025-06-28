@@ -152,6 +152,7 @@ app.post("/api/send-otp", async (req, res) => {
 
     // Store user info in session
     req.session.userInfo = { name, mobile };
+    req.session.generateOTPAt = new Date(); // Track OTP generation time
 
     // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
@@ -197,13 +198,11 @@ app.post("/api/verify-otp", async (req, res) => {
       );
       return res.status(400).json({ error: "Invalid OTP" });
     } else {
-      // user.enteredOTPAt = new Date(); // ✅ record OTP entered time
-      // await user.save();
+      // Mark session as verified
+      req.session.verified = true;
+      req.session.enteredOTPAt = new Date(); // Track OTP entered time
+      console.log("SUCCESS: OTP verified!");
     }
-
-    // Mark session as verified
-    req.session.verified = true;
-    console.log("SUCCESS: OTP verified!");
 
     res.json({
       success: true,
@@ -282,8 +281,10 @@ app.post("/api/roll-dice", async (req, res) => {
       shopifyPriceRuleId: shopifyDiscount.priceRuleId,
       shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
       isShopifyCode: useShopify,
+      generateOTPAt: req.session.generateOTPAt,
+      enteredOTPAt: req.session.enteredOTPAt,
+      rollDiceAt: new Date(), // Track when dice is rolled
     });
-    newUser.enteredOTPAt = new Date(); // ✅ timestamp for OTP entry
     await newUser.save();
 
     // Clear session
@@ -301,6 +302,25 @@ app.post("/api/roll-dice", async (req, res) => {
   } catch (error) {
     console.error("Roll dice error:", error);
     res.status(500).json({ error: "Failed to process dice roll" });
+  }
+});
+
+// Mark discount as used endpoint
+app.post("/api/mark-discount-used", async (req, res) => {
+  try {
+    const { discountCode } = req.body;
+    if (!discountCode) {
+      return res.status(400).json({ error: "Discount code required" });
+    }
+    const user = await User.findOne({ discountCode });
+    if (!user) {
+      return res.status(404).json({ error: "User not found for this code" });
+    }
+    user.discountUsedAt = new Date();
+    await user.save();
+    res.json({ success: true, message: "Discount usage recorded" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to mark discount as used" });
   }
 });
 
