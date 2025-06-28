@@ -46,6 +46,7 @@ app.use(cors(corsOptions));
 // Handle preflight requests
 // app.options('*', cors());
 app.options("/api/send-otp", cors(corsOptions));
+app.options("/api/verify-otp", cors(corsOptions));
 app.use(express.json());
 
 app.use(
