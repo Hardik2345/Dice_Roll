@@ -64,7 +64,12 @@ const AdminFunnelDashboard: React.FC = () => {
   }, [fetchStats]);
 
   useEffect(() => {
-    const socket: Socket = io("https://dice-roll-admin.onrender.com");
+    const socket: Socket = io(
+      process.env.NODE_ENV === "production"
+        ? "https://dice-roll-admin.onrender.com"
+        : "http://localhost:5001",
+      { transports: ["websocket"] }
+    );
     socket.on("funnelEventUpdate", () => {
       fetchStats();
     });
