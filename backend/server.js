@@ -12,7 +12,9 @@ const User = require("./models/User");
 const FunnelEvent = require("./models/FunnelEvent");
 const ShopifyService = require("./shopifyService");
 
-const allowedOrigins = ["https://dice-roll-5wsv.vercel.app"];
+const allowedOrigins = [
+  "https://dice-roll-5wsv-git-localdev-hardiks-projects-4c8d6fa8.vercel.app/",
+];
 
 const app = express();
 const shopifyService = new ShopifyService();
