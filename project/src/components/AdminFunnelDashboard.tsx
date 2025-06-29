@@ -109,6 +109,7 @@ const AdminFunnelDashboard: React.FC = () => {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="border rounded px-2 py-1"
+            max={endDate}
           />
         </div>
         <div>
@@ -118,6 +119,8 @@ const AdminFunnelDashboard: React.FC = () => {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="border rounded px-2 py-1"
+            min={startDate}
+            max={new Date().toISOString().slice(0, 10)}
           />
         </div>
         <div>
