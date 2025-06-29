@@ -669,31 +669,42 @@ app.get("/api/health", async (req, res) => {
 // Shopify webhook endpoint to mark discount as used
 app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   try {
-    // Shopify sends the payload as JSON
-    const { discount_code } = req.body;
-    if (!discount_code) {
+    // Shopify sends the payload as JSON (order object)
+    const discountCodes = req.body.discount_codes;
+    if (
+      !discountCodes ||
+      !Array.isArray(discountCodes) ||
+      discountCodes.length === 0
+    ) {
       return res
         .status(400)
-        .json({ error: "Missing discount_code in webhook payload" });
+        .json({ error: "No discount codes found in webhook payload" });
     }
-    // Find the user by discount code
-    const user = await User.findOne({ discountCode: discount_code });
-    if (!user) {
+    let updated = 0;
+    for (const codeObj of discountCodes) {
+      const discount_code = codeObj.code;
+      if (!discount_code) continue;
+      // Find the user by discount code
+      const user = await User.findOne({ discountCode: discount_code });
+      if (!user) continue;
+      user.discountUsedAt = new Date();
+      await user.save();
+      // Log funnel event: discount_used
+      await FunnelEvent.create({
+        mobile: user.mobileHash,
+        name: user.name,
+        eventType: "discount_used",
+        userId: user._id,
+      });
+      io.emit("funnelEventUpdate");
+      updated++;
+    }
+    if (updated === 0) {
       return res
         .status(404)
-        .json({ error: "User not found for this discount code" });
+        .json({ error: "No matching users for discount codes" });
     }
-    user.discountUsedAt = new Date();
-    await user.save();
-    // Log funnel event: discount_used
-    await FunnelEvent.create({
-      mobile: user.mobileHash,
-      name: user.name,
-      eventType: "discount_used",
-      userId: user._id,
-    });
-    io.emit("funnelEventUpdate");
-    res.json({ success: true });
+    res.json({ success: true, updated });
   } catch (error) {
     console.error("Shopify webhook error:", error);
     res.status(500).json({ error: "Failed to process webhook" });
