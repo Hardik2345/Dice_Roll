@@ -321,6 +321,7 @@ app.post("/api/roll-dice", async (req, res) => {
       name,
       eventType: "dice_rolled",
       userId: user._id,
+      discountCode: user.discountCode, // Add discountCode to dice_rolled event
     });
     io.emit("funnelEventUpdate");
     // Always update all funnel events for this mobile with the correct userId and name
@@ -364,6 +365,7 @@ app.post("/api/mark-discount-used", async (req, res) => {
       name: user.name,
       eventType: "discount_used",
       userId: user._id,
+      discountCode: user.discountCode, // Add discountCode to event
     });
     io.emit("funnelEventUpdate");
     res.json({ success: true, message: "Discount usage recorded" });
@@ -551,7 +553,23 @@ app.get(
           timestamp: { $gte: start, $lte: end },
           ...mobileFilter,
         }).sort({ timestamp: -1 });
-        stats[eventType] = { count: events.length, events };
+        // Add discountCode to each event if available from user
+        const eventsWithDiscount = await Promise.all(
+          events.map(async (event) => {
+            if (!event.discountCode && event.userId) {
+              const user = await User.findById(event.userId);
+              if (user && user.discountCode) {
+                event = event.toObject();
+                event.discountCode = user.discountCode;
+              }
+            }
+            return event;
+          })
+        );
+        stats[eventType] = {
+          count: eventsWithDiscount.length,
+          events: eventsWithDiscount,
+        };
       }
       res.json(stats);
     } catch (error) {
@@ -696,6 +714,7 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
         name: user.name,
         eventType: "discount_used",
         userId: user._id,
+        discountCode: user.discountCode, // Add discountCode to event
       });
       io.emit("funnelEventUpdate");
       updated++;

@@ -14,6 +14,7 @@ const funnelEventSchema = new mongoose.Schema({
       "discount_used",
     ],
   },
+  discountCode: { type: String }, // Added for discount tracking
   timestamp: { type: Date, default: Date.now },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 });
