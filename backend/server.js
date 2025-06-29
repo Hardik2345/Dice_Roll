@@ -508,11 +508,17 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
   }
 });
 
-// Admin funnel stats endpoint with no-store cache header
+// Admin funnel stats endpoint with full cache-busting headers
 app.get(
   "/api/admin/funnel-stats",
   (req, res, next) => {
-    res.set("Cache-Control", "no-store");
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.set("Surrogate-Control", "no-store");
     next();
   },
   async (req, res) => {
