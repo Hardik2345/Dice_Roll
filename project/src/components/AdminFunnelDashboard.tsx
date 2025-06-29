@@ -24,6 +24,7 @@ interface FunnelEvent {
   timestamp: string;
   userId?: string;
   name?: string;
+  discountCode?: string; // Added for discount tracking
 }
 
 interface FunnelStats {
@@ -77,6 +78,21 @@ const AdminFunnelDashboard: React.FC = () => {
     };
   }, [fetchStats]);
 
+  const handleMarkDiscountUsed = async (discountCode: string) => {
+    try {
+      setLoading(true);
+      setError("");
+      const apiService = await import("../services/api");
+      await apiService.default.markDiscountUsed(discountCode);
+      fetchStats();
+    } catch (error) {
+      console.error("Error marking discount as used:", error);
+      setError("Failed to mark discount as used");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderTable = (events: FunnelEvent[]) => (
     <table className="min-w-full border mt-4">
       <thead>
@@ -85,6 +101,9 @@ const AdminFunnelDashboard: React.FC = () => {
           <th className="border px-2 py-1">Name</th>
           <th className="border px-2 py-1">Mobile</th>
           <th className="border px-2 py-1">Timestamp</th>
+          {activeTab === "discount_used" && (
+            <th className="border px-2 py-1">Action</th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -94,6 +113,20 @@ const AdminFunnelDashboard: React.FC = () => {
             <td className="border px-2 py-1">{e.name || "-"}</td>
             <td className="border px-2 py-1">{e.mobile}</td>
             <td className="border px-2 py-1">{formatDate(e.timestamp)}</td>
+            {activeTab === "discount_used" && (
+              <td className="border px-2 py-1">
+                {e.discountCode ? (
+                  <button
+                    className="bg-green-600 text-white px-2 py-1 rounded text-xs"
+                    onClick={() => handleMarkDiscountUsed(e.discountCode!)}
+                  >
+                    Mark as Used
+                  </button>
+                ) : (
+                  <span className="text-gray-400 text-xs">N/A</span>
+                )}
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
