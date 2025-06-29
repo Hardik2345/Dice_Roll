@@ -348,6 +348,7 @@ app.post("/api/roll-dice", async (req, res) => {
 app.post("/api/mark-discount-used", async (req, res) => {
   try {
     const { discountCode } = req.body;
+    console.log("Discount code used", discountCode);
     if (!discountCode) {
       return res.status(400).json({ error: "Discount code required" });
     }
