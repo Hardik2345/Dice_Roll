@@ -52,6 +52,7 @@ const AdminFunnelDashboard: React.FC = () => {
       const res = await axios.get(`${API_BASE}/api/admin/funnel-stats`, {
         params: { startDate, endDate, mobile: mobileSearch, t: Date.now() },
       });
+      console.log(res.data);
       setStats(res.data);
     } catch (err) {
       setError(
