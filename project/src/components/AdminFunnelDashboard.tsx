@@ -63,8 +63,6 @@ const AdminFunnelDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchStats();
-    console.log("Stats: ", stats);
-    // eslint-disable-next-line
   }, [fetchStats]);
 
   useEffect(() => {
