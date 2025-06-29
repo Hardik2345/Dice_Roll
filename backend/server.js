@@ -508,43 +508,50 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
   }
 });
 
-// Admin funnel stats endpoint with optional mobile search
-app.get("/api/admin/funnel-stats", async (req, res) => {
-  try {
-    const { startDate, endDate, mobile } = req.query;
-    if (!startDate || !endDate) {
-      return res
-        .status(400)
-        .json({ error: "startDate and endDate are required" });
-    }
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+// Admin funnel stats endpoint with no-store cache header
+app.get(
+  "/api/admin/funnel-stats",
+  (req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  },
+  async (req, res) => {
+    try {
+      const { startDate, endDate, mobile } = req.query;
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate are required" });
+      }
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
 
-    const eventTypes = [
-      "entered",
-      "otp_sent",
-      "otp_verified",
-      "dice_rolled",
-      "discount_used",
-    ];
-    const stats = {};
-    const mobileFilter = mobile
-      ? { mobile: { $regex: mobile, $options: "i" } }
-      : {};
-    for (const eventType of eventTypes) {
-      const events = await FunnelEvent.find({
-        eventType,
-        timestamp: { $gte: start, $lte: end },
-        ...mobileFilter,
-      }).sort({ timestamp: -1 });
-      stats[eventType] = { count: events.length, events };
+      const eventTypes = [
+        "entered",
+        "otp_sent",
+        "otp_verified",
+        "dice_rolled",
+        "discount_used",
+      ];
+      const stats = {};
+      const mobileFilter = mobile
+        ? { mobile: { $regex: mobile, $options: "i" } }
+        : {};
+      for (const eventType of eventTypes) {
+        const events = await FunnelEvent.find({
+          eventType,
+          timestamp: { $gte: start, $lte: end },
+          ...mobileFilter,
+        }).sort({ timestamp: -1 });
+        stats[eventType] = { count: events.length, events };
+      }
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch funnel stats" });
     }
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch funnel stats" });
   }
-});
+);
 
 // Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
 app.get("/api/test-dice-distribution", (req, res) => {
