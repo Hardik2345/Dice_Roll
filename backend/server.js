@@ -690,6 +690,7 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   try {
     // Shopify sends the payload as JSON (order object)
     const discountCodes = req.body.discount_codes;
+    console.log("Shopify webhook received:", discountCodes);
     if (
       !discountCodes ||
       !Array.isArray(discountCodes) ||

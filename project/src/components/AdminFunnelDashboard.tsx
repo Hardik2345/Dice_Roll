@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
+import apiService from "../services/api";
 
 const API_BASE = "https://dice-roll-admin.onrender.com";
 
@@ -82,8 +83,7 @@ const AdminFunnelDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError("");
-      const apiService = await import("../services/api");
-      await apiService.default.markDiscountUsed(discountCode);
+      await apiService.markDiscountUsed(discountCode);
       fetchStats();
     } catch (error) {
       console.error("Error marking discount as used:", error);
