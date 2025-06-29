@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 
+const API_BASE = "https://dice-roll-admin.onrender.com";
+
 const TABS = [
   { key: "entered", label: "Entered" },
   { key: "otp_sent", label: "OTP Sent" },
@@ -45,8 +47,8 @@ const AdminFunnelDashboard: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/admin/funnel-stats", {
-        params: { startDate, endDate, mobile: mobileSearch },
+      const res = await axios.get(`${API_BASE}/api/admin/funnel-stats`, {
+        params: { startDate, endDate, mobile: mobileSearch, t: Date.now() },
       });
       setStats(res.data);
     } catch (err) {
@@ -66,7 +68,9 @@ const AdminFunnelDashboard: React.FC = () => {
   }, [fetchStats]);
 
   useEffect(() => {
-    const socket: Socket = io("https://dice-roll-admin.onrender.com");
+    const socket: Socket = io("https://dice-roll-admin.onrender.com", {
+      transports: ["websocket"],
+    });
     socket.on("funnelEventUpdate", () => {
       fetchStats();
     });
