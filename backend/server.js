@@ -48,6 +48,7 @@ app.use(cors(corsOptions));
 app.options("/api/send-otp", cors(corsOptions));
 app.options("/api/verify-otp", cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Support urlencoded bodies
 
 app.use(
   session({
@@ -685,9 +686,17 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// Add urlencoded middleware for Shopify webhooks to support both JSON and urlencoded payloads
+app.use(
+  "/api/shopify/webhook/discount-used",
+  express.urlencoded({ extended: true })
+);
+
 // Shopify webhook endpoint to mark discount as used
 app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   try {
+    // Debug: log the full body for troubleshooting
+    console.log("Shopify webhook raw body received:", req.body);
     // Shopify sends the payload as JSON (order object)
     const discountCodes = req.body.discount_codes;
     console.log("Shopify webhook received:", discountCodes);
