@@ -94,6 +94,13 @@ const AdminFunnelDashboard: React.FC = () => {
     }
   };
 
+  // Helper to extract mobile from discount code
+  function extractMobileFromDiscountCode(discountCode?: string) {
+    if (!discountCode) return "-";
+    const match = discountCode.match(/(\d{10})$/);
+    return match ? match[1] : "-";
+  }
+
   const renderTable = (events: FunnelEvent[]) => (
     <table className="min-w-full border mt-4">
       <thead>
@@ -112,7 +119,9 @@ const AdminFunnelDashboard: React.FC = () => {
           <tr key={e._id}>
             <td className="border px-2 py-1">{i + 1}</td>
             <td className="border px-2 py-1">{e.name || "-"}</td>
-            <td className="border px-2 py-1">{e.mobile}</td>
+            <td className="border px-2 py-1">
+              {extractMobileFromDiscountCode(e.discountCode)}
+            </td>
             <td className="border px-2 py-1">{formatDate(e.timestamp)}</td>
             {activeTab === "discount_used" && (
               <td className="border px-2 py-1">
