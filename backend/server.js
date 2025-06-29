@@ -555,21 +555,29 @@ app.get(
           ...mobileFilter,
         }).sort({ timestamp: -1 });
         // Add discountCode to each event if available from user
-        const eventsWithDiscount = await Promise.all(
+        const eventsWithMobile = await Promise.all(
           events.map(async (event) => {
-            if (!event.discountCode && event.userId) {
+            let eventObj = event.toObject();
+            // If event has userId, fetch the user and attach unhashed mobile for admin
+            if (event.userId) {
               const user = await User.findById(event.userId);
-              if (user && user.discountCode) {
-                event = event.toObject();
-                event.discountCode = user.discountCode;
+              if (user && user.mobile) {
+                eventObj.unhashedMobile = user.mobile;
               }
             }
-            return event;
+            // Add discountCode if missing
+            if (!eventObj.discountCode && event.userId) {
+              const user = await User.findById(event.userId);
+              if (user && user.discountCode) {
+                eventObj.discountCode = user.discountCode;
+              }
+            }
+            return eventObj;
           })
         );
         stats[eventType] = {
-          count: eventsWithDiscount.length,
-          events: eventsWithDiscount,
+          count: eventsWithMobile.length,
+          events: eventsWithMobile,
         };
       }
       res.json(stats);
