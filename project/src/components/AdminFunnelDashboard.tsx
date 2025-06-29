@@ -120,7 +120,9 @@ const AdminFunnelDashboard: React.FC = () => {
             <td className="border px-2 py-1">{i + 1}</td>
             <td className="border px-2 py-1">{e.name || "-"}</td>
             <td className="border px-2 py-1">
-              {extractMobileFromDiscountCode(e.discountCode)}
+              {activeTab === "discount_used"
+                ? extractMobileFromDiscountCode(e.discountCode)
+                : e.mobile}
             </td>
             <td className="border px-2 py-1">{formatDate(e.timestamp)}</td>
             {activeTab === "discount_used" && (
