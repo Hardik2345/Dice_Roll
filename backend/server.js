@@ -21,7 +21,7 @@ const shopifyService = new ShopifyService();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     credentials: true,
   },
 });
