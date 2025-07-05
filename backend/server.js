@@ -756,7 +756,7 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
     console.log("Shopify customer tag webhook received:", req.body);
-    let { customerId, tags } = req.body;
+    let { customerId, tags, customerAccessToken } = req.body;
     if (!customerId || !Array.isArray(tags)) {
       return res
         .status(400)
@@ -767,53 +767,59 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
     if (match) {
       customerId = match[1];
     }
-    // Fetch customer details from Shopify
-    const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-01/customers/${customerId}.json`;
+    // Fetch customer details from Shopify Storefront API using GraphQL
+    let phoneNumber = null;
     try {
-      const response = await axios.get(shopifyUrl, {
-        headers: {
-          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
-        },
-      });
-      console.log("Shopify customer details:", response.data);
-      // Extract phone number if available
-      const phoneNumber =
-        response.data && response.data.customer && response.data.customer.phone
-          ? response.data.customer.phone
-          : null;
-      // Find existing record or create new
-      let customerTag = await CustomerTag.findOne({ customerId });
-      if (customerTag) {
-        // Append new tags, avoiding duplicates
-        const newTags = tags.filter((tag) => !customerTag.tags.includes(tag));
-        if (newTags.length > 0) {
-          customerTag.tags.push(...newTags);
+      const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
+      const domain = process.env.SHOPIFY_STORE_URL;
+      const graphqlUrl = `https://${domain}/api/2023-01/graphql.json`;
+      // You must have customerAccessToken to query customer details
+      if (!customerAccessToken) {
+        throw new Error(
+          "customerAccessToken is required in the webhook payload"
+        );
+      }
+      const query = `query {\n  customer(customerAccessToken: \"${customerAccessToken}\") {\n    id\n    firstName\n    lastName\n    acceptsMarketing\n    email\n    phone\n  }\n}`;
+      const response = await axios.post(
+        graphqlUrl,
+        { query },
+        {
+          headers: {
+            "X-Shopify-Storefront-Access-Token": storefrontAccessToken,
+            "Content-Type": "application/json",
+          },
         }
-        if (phoneNumber) {
-          customerTag.phoneNumber = phoneNumber;
-        }
-        await customerTag.save();
-      } else {
-        customerTag = new CustomerTag({ customerId, tags, phoneNumber });
-        await customerTag.save();
+      );
+      console.log("Shopify Storefront customer details:", response.data);
+      if (
+        response.data &&
+        response.data.data &&
+        response.data.data.customer &&
+        response.data.data.customer.phone
+      ) {
+        phoneNumber = response.data.data.customer.phone;
       }
     } catch (shopifyError) {
       console.error(
-        "Error fetching customer from Shopify:",
+        "Error fetching customer from Shopify Storefront API:",
         shopifyError.response ? shopifyError.response.data : shopifyError
       );
-      // Still update tags even if Shopify fails
-      let customerTag = await CustomerTag.findOne({ customerId });
-      if (customerTag) {
-        const newTags = tags.filter((tag) => !customerTag.tags.includes(tag));
-        if (newTags.length > 0) {
-          customerTag.tags.push(...newTags);
-          await customerTag.save();
-        }
-      } else {
-        customerTag = new CustomerTag({ customerId, tags });
-        await customerTag.save();
+    }
+    // Find existing record or create new
+    let customerTag = await CustomerTag.findOne({ customerId });
+    if (customerTag) {
+      // Append new tags, avoiding duplicates
+      const newTags = tags.filter((tag) => !customerTag.tags.includes(tag));
+      if (newTags.length > 0) {
+        customerTag.tags.push(...newTags);
       }
+      if (phoneNumber) {
+        customerTag.phoneNumber = phoneNumber;
+      }
+      await customerTag.save();
+    } else {
+      customerTag = new CustomerTag({ customerId, tags, phoneNumber });
+      await customerTag.save();
     }
     res.json({ success: true });
   } catch (error) {
