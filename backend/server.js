@@ -770,7 +770,7 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
     // Fetch customer details from Shopify Admin API
     let phoneNumber = null;
     try {
-      const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-07/customers/${customerId}.json`;
+      const shopifyUrl = `https://admin.shopify.com/store/pypyyn-d1/customers/${customerId}.json`;
       const response = await axios.get(shopifyUrl, {
         headers: {
           "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
