@@ -10,6 +10,7 @@ require("dotenv").config();
 
 const User = require("./models/User");
 const FunnelEvent = require("./models/FunnelEvent");
+const CustomerTag = require("./models/CustomerTag");
 const ShopifyService = require("./shopifyService");
 
 const allowedOrigins = [
@@ -755,7 +756,60 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
     console.log("Shopify customer tag webhook received:", req.body);
-    // You can add your business logic here, e.g., update user records, trigger events, etc.
+    const { customerId, tags } = req.body;
+    if (!customerId || !Array.isArray(tags)) {
+      return res
+        .status(400)
+        .json({ error: "Missing customerId or tags array in payload" });
+    }
+    // Fetch customer details from Shopify
+    const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-01/customers/${customerId}.json`;
+    try {
+      const response = await axios.get(shopifyUrl, {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
+        },
+      });
+      console.log("Shopify customer details:", response.data);
+      // Extract phone number if available
+      const phoneNumber =
+        response.data && response.data.customer && response.data.customer.phone
+          ? response.data.customer.phone
+          : null;
+      // Find existing record or create new
+      let customerTag = await CustomerTag.findOne({ customerId });
+      if (customerTag) {
+        // Append new tags, avoiding duplicates
+        const newTags = tags.filter((tag) => !customerTag.tags.includes(tag));
+        if (newTags.length > 0) {
+          customerTag.tags.push(...newTags);
+        }
+        if (phoneNumber) {
+          customerTag.phoneNumber = phoneNumber;
+        }
+        await customerTag.save();
+      } else {
+        customerTag = new CustomerTag({ customerId, tags, phoneNumber });
+        await customerTag.save();
+      }
+    } catch (shopifyError) {
+      console.error(
+        "Error fetching customer from Shopify:",
+        shopifyError.response ? shopifyError.response.data : shopifyError
+      );
+      // Still update tags even if Shopify fails
+      let customerTag = await CustomerTag.findOne({ customerId });
+      if (customerTag) {
+        const newTags = tags.filter((tag) => !customerTag.tags.includes(tag));
+        if (newTags.length > 0) {
+          customerTag.tags.push(...newTags);
+          await customerTag.save();
+        }
+      } else {
+        customerTag = new CustomerTag({ customerId, tags });
+        await customerTag.save();
+      }
+    }
     res.json({ success: true });
   } catch (error) {
     console.error("Shopify customer tag webhook error:", error);
