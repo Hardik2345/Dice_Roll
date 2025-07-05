@@ -14,7 +14,7 @@ const ShopifyService = require("./shopifyService");
 
 const allowedOrigins = [
   "https://dice-roll-5wsv-git-localdev-hardiks-projects-4c8d6fa8.vercel.app",
-  "https://blabliblulife.com/",
+  "https://blabliblulife.com",
 ];
 
 const app = express();
