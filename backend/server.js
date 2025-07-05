@@ -755,7 +755,7 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
 app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
-    console.log("Shopify customer tag webhook received:", req.email);
+    console.log("Shopify customer tag webhook received:", req.body);
     let { customerId, tags } = req.body;
     if (!customerId || !Array.isArray(tags)) {
       return res
@@ -767,41 +767,26 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
     if (match) {
       customerId = match[1];
     }
-    // Fetch customer details from Shopify Storefront API using GraphQL
+    // Fetch customer details from Shopify Admin API
     let phoneNumber = null;
     try {
-      const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
-      const domain = process.env.SHOPIFY_STORE_URL;
-      const graphqlUrl = `https://${domain}/api/2023-01/graphql.json`;
-      // You must have customerAccessToken to query customer details
-      if (!customerAccessToken) {
-        throw new Error(
-          "customerAccessToken is required in the webhook payload"
-        );
-      }
-      const query = `query {\n  customer(customerAccessToken: \"${customerAccessToken}\") {\n    id\n    firstName\n    lastName\n    acceptsMarketing\n    email\n    phone\n  }\n}`;
-      const response = await axios.post(
-        graphqlUrl,
-        { query },
-        {
-          headers: {
-            "X-Shopify-Storefront-Access-Token": storefrontAccessToken,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Shopify Storefront customer details:", response.data);
+      const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-07/customers/${customerId}.json`;
+      const response = await axios.get(shopifyUrl, {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
+        },
+      });
+      console.log("Shopify customer details:", response.data);
       if (
         response.data &&
-        response.data.data &&
-        response.data.data.customer &&
-        response.data.data.customer.phone
+        response.data.customer &&
+        response.data.customer.phone
       ) {
-        phoneNumber = response.data.data.customer.phone;
+        phoneNumber = response.data.customer.phone;
       }
     } catch (shopifyError) {
       console.error(
-        "Error fetching customer from Shopify Storefront API:",
+        "Error fetching customer from Shopify Admin API:",
         shopifyError.response ? shopifyError.response.data : shopifyError
       );
     }
