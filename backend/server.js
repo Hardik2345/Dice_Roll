@@ -756,11 +756,16 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
     console.log("Shopify customer tag webhook received:", req.body);
-    const { customerId, tags } = req.body;
+    let { customerId, tags } = req.body;
     if (!customerId || !Array.isArray(tags)) {
       return res
         .status(400)
         .json({ error: "Missing customerId or tags array in payload" });
+    }
+    // Extract numeric Shopify customer ID if in gid://shopify/Customer/ format
+    const match = customerId.match(/Customer\/(\d+)$/);
+    if (match) {
+      customerId = match[1];
     }
     // Fetch customer details from Shopify
     const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-01/customers/${customerId}.json`;
