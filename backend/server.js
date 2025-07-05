@@ -750,6 +750,19 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   }
 });
 
+// Shopify webhook endpoint to listen for customer tag additions
+app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
+  try {
+    // Log the incoming payload for debugging
+    console.log("Shopify customer tag webhook received:", req.body);
+    // You can add your business logic here, e.g., update user records, trigger events, etc.
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Shopify customer tag webhook error:", error);
+    res.status(500).json({ error: "Failed to process customer tag webhook" });
+  }
+});
+
 // Socket.io connection handler
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
