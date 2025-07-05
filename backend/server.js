@@ -755,8 +755,8 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
 app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
-    console.log("Shopify customer tag webhook received:", req.body);
-    let { customerId, tags, customerAccessToken } = req.body;
+    console.log("Shopify customer tag webhook received:", req.email);
+    let { customerId, tags } = req.body;
     if (!customerId || !Array.isArray(tags)) {
       return res
         .status(400)
