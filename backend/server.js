@@ -767,26 +767,34 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
     if (match) {
       customerId = match[1];
     }
-    // Fetch customer details from Shopify Admin API
+    // Fetch customer details from Shopify Admin API using GraphQL
     let phoneNumber = null;
     try {
-      const shopifyUrl = `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-07/customers/${customerId}.json`;
-      const response = await axios.get(shopifyUrl, {
-        headers: {
-          "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
-        },
-      });
-      console.log("Shopify customer details:", response.data);
+      const gqlQuery = {
+        query: `\n        {\n          customer(id: \"gid://shopify/Customer/${customerId}\") {\n            id\n            email\n            phone\n            firstName\n            lastName\n            tags\n            defaultAddress {\n              address1\n              city\n              phone\n              country\n            }\n          }\n        }\n      `,
+      };
+      const response = await axios.post(
+        `https://${process.env.SHOPIFY_STORE_URL}/admin/api/2023-07/graphql.json`,
+        gqlQuery,
+        {
+          headers: {
+            "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Shopify customer details (GraphQL):", response.data);
       if (
         response.data &&
-        response.data.customer &&
-        response.data.customer.phone
+        response.data.data &&
+        response.data.data.customer &&
+        response.data.data.customer.phone
       ) {
-        phoneNumber = response.data.customer.phone;
+        phoneNumber = response.data.data.customer.phone;
       }
     } catch (shopifyError) {
       console.error(
-        "Error fetching customer from Shopify Admin API:",
+        "Error fetching customer from Shopify Admin GraphQL API:",
         shopifyError.response ? shopifyError.response.data : shopifyError
       );
     }
