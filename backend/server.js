@@ -129,6 +129,104 @@ function getWeightedDiceResult() {
   return 1;
 }
 
+// Shopify Admin GraphQL helpers
+const SHOPIFY_SHOP_ID = "92554494247";
+const SHOPIFY_ADMIN_GRAPHQL_ENDPOINT = `https://shopify.com/${SHOPIFY_SHOP_ID}/account/customer/api/2025-07/graphql`;
+const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+
+async function shopifyGraphQLRequest(query, variables = {}) {
+  try {
+    const response = await axios.post(
+      SHOPIFY_ADMIN_GRAPHQL_ENDPOINT,
+      {
+        query,
+        variables,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: SHOPIFY_ACCESS_TOKEN,
+        },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Shopify GraphQL error:", err.response ? err.response.data : err);
+    throw err;
+  }
+}
+
+async function findShopifyCustomerByPhone(phone) {
+  // Shopify does not support direct phone search, so we use a customerSearch query
+  const query = `
+    query($query: String!) {
+      customers(first: 1, query: $query) {
+        edges {
+          node {
+            id
+            email
+            phone
+            tags
+          }
+        }
+      }
+    }
+  `;
+  const variables = { query: `phone:${phone}` };
+  const data = await shopifyGraphQLRequest(query, variables);
+  const edges = data?.data?.customers?.edges || [];
+  return edges.length > 0 ? edges[0].node : null;
+}
+
+async function createShopifyCustomer(phone) {
+  const email = `${phone.replace(/[^\d]/g, "")}@gmail.com`;
+  const mutation = `
+    mutation customerCreate($input: CustomerCreateInput!) {
+      customerCreate(input: $input) {
+        customer { id email phone tags }
+        userErrors { field message }
+      }
+    }
+  `;
+  const variables = {
+    input: {
+      email,
+      phone,
+    },
+  };
+  const data = await shopifyGraphQLRequest(mutation, variables);
+  if (data?.data?.customerCreate?.customer) {
+    return data.data.customerCreate.customer;
+  }
+  throw new Error(
+    data?.data?.customerCreate?.userErrors?.map(e => e.message).join(", ") || "Failed to create customer"
+  );
+}
+
+async function addRedeemedTagToShopifyCustomer(customerId) {
+  const mutation = `
+    mutation customerUpdate($id: ID!, $input: CustomerInput!) {
+      customerUpdate(id: $id, input: $input) {
+        customer { id tags }
+        userErrors { field message }
+      }
+    }
+  `;
+  const variables = {
+    id: customerId,
+    input: {
+      tags: ["redeemed"],
+    },
+  };
+  const data = await shopifyGraphQLRequest(mutation, variables);
+  if (data?.data?.customerUpdate?.customer) {
+    return data.data.customerUpdate.customer;
+  }
+  throw new Error(
+    data?.data?.customerUpdate?.userErrors?.map(e => e.message).join(", ") || "Failed to update customer tags"
+  );
+}
+
 // Routes
 
 // Send OTP endpoint
@@ -140,22 +238,26 @@ app.post("/api/send-otp", async (req, res) => {
       return res.status(400).json({ error: "Name and mobile number required" });
     }
 
-    // Check if user has already played
-    const existingUsers = await User.find({});
-    for (let user of existingUsers) {
-      const isMatch = await bcrypt.compare(mobile, user.mobileHash);
-      if (isMatch) {
+    // Shopify: Check if customer exists by phone
+    let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
+    if (shopifyCustomer) {
+      // If customer has redeemed tag, block
+      if (shopifyCustomer.tags && shopifyCustomer.tags.includes("redeemed")) {
         return res.status(400).json({
-          error: "You have already played this game!",
-          alreadyPlayed: true,
+          error: "Oops! It seems like you have already redeemed your discount.",
+          alreadyRedeemed: true,
         });
       }
+    } else {
+      // Customer does not exist, create
+      shopifyCustomer = await createShopifyCustomer(mobile);
     }
 
-    // Store user info and OTP generation time in session
+    // Store user info, Shopify customerId, and OTP generation time in session
     req.session.userInfo = { name, mobile };
-    req.session.generateOTPAt = new Date(); // Track OTP generation time
-    req.session.playedAt = new Date(); // Track when user enters
+    req.session.shopifyCustomerId = shopifyCustomer.id;
+    req.session.generateOTPAt = new Date();
+    req.session.playedAt = new Date();
 
     // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
@@ -242,8 +344,9 @@ app.post("/api/roll-dice", async (req, res) => {
     }
 
     const { name, mobile } = req.session.userInfo;
+    const shopifyCustomerId = req.session.shopifyCustomerId;
 
-    // Double-check if user has already played
+    // Double-check if user has already played (local DB check)
     const existingUsers = await User.find({});
     for (let user of existingUsers) {
       const isMatch = await bcrypt.compare(mobile, user.mobileHash);
@@ -253,70 +356,6 @@ app.post("/api/roll-dice", async (req, res) => {
           alreadyPlayed: true,
         });
       }
-    }
-
-    const mobileWithoutCountryCode = mobile.replace(/^\+?91/, ""); // Remove +91 or 91 if present
-    const phonePatterns = [
-      mobile, // Original format
-      `+91${mobileWithoutCountryCode}`, // With +91
-      `91${mobileWithoutCountryCode}`, // With 91 (no +)
-      mobileWithoutCountryCode, // Just the 10 digits
-      `+${mobile}`, // Original with +
-    ];
-
-    // Find customer tag with any of these phone number formats
-    const customerTag = await CustomerTag.findOne({
-      phoneNumber: `+91${mobileWithoutCountryCode}`,
-    });
-
-    console.log("mobile without country code", mobileWithoutCountryCode);
-
-    console.log("Customer tag found:", customerTag);
-
-    if (customerTag && customerTag.tags.includes("redeemed")) {
-      // User already has a discount, let them play but don't generate new discount
-      const diceResult = getWeightedDiceResult();
-
-      // Hash mobile number for storage
-      const mobileHash = await hashMobile(mobile);
-
-      // Save user record but mark as already redeemed
-      let user = new User({
-        mobileHash,
-        name,
-        discountCode: "ALREADY_REDEEMED",
-        diceResult,
-        shopifyPriceRuleId: null,
-        shopifyDiscountCodeId: null,
-        isShopifyCode: false,
-        alreadyRedeemed: true, // Add this field to your User model
-        generateOTPAt: req.session.generateOTPAt,
-        enteredOTPAt: req.session.enteredOTPAt,
-        rollDiceAt: new Date(),
-        playedAt: req.session.playedAt,
-      });
-      await user.save();
-
-      // Log funnel event: dice_rolled
-      await FunnelEvent.create({
-        mobile,
-        name,
-        eventType: "dice_rolled",
-        userId: user._id,
-        discountCode: "ALREADY_REDEEMED",
-        alreadyRedeemed: true,
-      });
-      io.emit("funnelEventUpdate");
-
-      // Clear session
-      req.session.destroy();
-
-      return res.json({
-        success: true,
-        diceResult,
-        alreadyRedeemed: true,
-        message: "Oops! It seems like you have already redeemed your discount.",
-      });
     }
 
     // Generate weighted dice result (1-6)
@@ -367,7 +406,7 @@ app.post("/api/roll-dice", async (req, res) => {
         isShopifyCode: useShopify,
         generateOTPAt: req.session.generateOTPAt,
         enteredOTPAt: req.session.enteredOTPAt,
-        rollDiceAt: new Date(), // Track when dice is rolled
+        rollDiceAt: new Date(),
         playedAt: req.session.playedAt,
       });
       await user.save();
@@ -394,6 +433,15 @@ app.post("/api/roll-dice", async (req, res) => {
     io.emit("funnelEventUpdate");
     // Always update all funnel events for this mobile with the correct userId and name
     await FunnelEvent.updateMany({ mobile }, { userId: user._id, name });
+
+    // Add the 'redeemed' tag to the Shopify customer
+    if (shopifyCustomerId) {
+      try {
+        await addRedeemedTagToShopifyCustomer(shopifyCustomerId);
+      } catch (err) {
+        console.error("Failed to add redeemed tag to Shopify customer:", err);
+      }
+    }
 
     // Clear session
     req.session.destroy();
