@@ -16,6 +16,6 @@ const CustomerTagSchema = new mongoose.Schema({
   },
 });
 
-CustomerTagSchema.index({ customerId: 1 }, { unique: true });
+CustomerTagSchema.index({ customerId: 1 });
 
 module.exports = mongoose.model("CustomerTag", CustomerTagSchema);
