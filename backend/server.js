@@ -266,7 +266,7 @@ app.post("/api/roll-dice", async (req, res) => {
 
     // Find customer tag with any of these phone number formats
     const customerTag = await CustomerTag.findOne({
-      phoneNumber: { $in: phonePatterns },
+      phoneNumber: `+91${mobileWithoutCountryCode}`,
     });
 
     console.log("mobile without country code", mobileWithoutCountryCode);
