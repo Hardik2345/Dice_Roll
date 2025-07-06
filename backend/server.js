@@ -255,9 +255,18 @@ app.post("/api/roll-dice", async (req, res) => {
       }
     }
 
-    // Check if customer already has a "redeemed" tag in Shopify
+    const mobileWithoutCountryCode = mobile.replace(/^\+?91/, ""); // Remove +91 or 91 if present
+    const phonePatterns = [
+      mobile, // Original format
+      `+91${mobileWithoutCountryCode}`, // With +91
+      `91${mobileWithoutCountryCode}`, // With 91 (no +)
+      mobileWithoutCountryCode, // Just the 10 digits
+      `+${mobile}`, // Original with +
+    ];
+
+    // Find customer tag with any of these phone number formats
     const customerTag = await CustomerTag.findOne({
-      phoneNumber: { $regex: mobile.replace(/^\+/, "\\+?") }, // Handle phone number with or without + prefix
+      phoneNumber: { $in: phonePatterns },
     });
 
     if (customerTag && customerTag.tags.includes("redeemed")) {
