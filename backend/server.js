@@ -269,6 +269,10 @@ app.post("/api/roll-dice", async (req, res) => {
       phoneNumber: { $in: phonePatterns },
     });
 
+    console.log("mobile without country code", mobileWithoutCountryCode);
+
+    console.log("Customer tag found:", customerTag);
+
     if (customerTag && customerTag.tags.includes("redeemed")) {
       // User already has a discount, let them play but don't generate new discount
       const diceResult = getWeightedDiceResult();
