@@ -806,6 +806,10 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
       customerTag = new CustomerTag({ customerId, tags, phoneNumber });
       await customerTag.save();
     }
+    // Check for 'redeemed' tag
+    if (customerTag.tags.includes("redeemed")) {
+      console.log("Oops! it seems like you have already redeemed your discount coupon.");
+    }
     res.json({ success: true });
   } catch (error) {
     console.error("Shopify customer tag webhook error:", error);
