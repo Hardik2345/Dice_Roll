@@ -49,6 +49,10 @@ const userSchema = new mongoose.Schema({
   discountUsedAt: {
     type: Date,
   },
+  alreadyRedeemed: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Index for faster queries

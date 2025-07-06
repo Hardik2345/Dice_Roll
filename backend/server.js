@@ -232,6 +232,7 @@ app.post("/api/verify-otp", async (req, res) => {
 });
 
 // Roll dice endpoint - Updated with Shopify integration
+// Roll dice endpoint - Updated with Shopify integration and redeemed tag check
 app.post("/api/roll-dice", async (req, res) => {
   try {
     if (!req.session.verified || !req.session.userInfo) {
@@ -254,10 +255,61 @@ app.post("/api/roll-dice", async (req, res) => {
       }
     }
 
+    // Check if customer already has a "redeemed" tag in Shopify
+    const customerTag = await CustomerTag.findOne({
+      phoneNumber: { $regex: mobile.replace(/^\+/, "\\+?") }, // Handle phone number with or without + prefix
+    });
+
+    if (customerTag && customerTag.tags.includes("redeemed")) {
+      // User already has a discount, let them play but don't generate new discount
+      const diceResult = getWeightedDiceResult();
+
+      // Hash mobile number for storage
+      const mobileHash = await hashMobile(mobile);
+
+      // Save user record but mark as already redeemed
+      let user = new User({
+        mobileHash,
+        name,
+        discountCode: "ALREADY_REDEEMED",
+        diceResult,
+        shopifyPriceRuleId: null,
+        shopifyDiscountCodeId: null,
+        isShopifyCode: false,
+        alreadyRedeemed: true, // Add this field to your User model
+        generateOTPAt: req.session.generateOTPAt,
+        enteredOTPAt: req.session.enteredOTPAt,
+        rollDiceAt: new Date(),
+        playedAt: req.session.playedAt,
+      });
+      await user.save();
+
+      // Log funnel event: dice_rolled
+      await FunnelEvent.create({
+        mobile,
+        name,
+        eventType: "dice_rolled",
+        userId: user._id,
+        discountCode: "ALREADY_REDEEMED",
+        alreadyRedeemed: true,
+      });
+      io.emit("funnelEventUpdate");
+
+      // Clear session
+      req.session.destroy();
+
+      return res.json({
+        success: true,
+        diceResult,
+        alreadyRedeemed: true,
+        message: "Oops! It seems like you have already redeemed your discount.",
+      });
+    }
+
     // Generate weighted dice result (1-6)
     const diceResult = getWeightedDiceResult();
 
-    // Create discount in Shopify
+    // Create discount in Shopify (rest of the code remains the same)
     let shopifyDiscount;
     let useShopify = true;
 
@@ -347,7 +399,6 @@ app.post("/api/roll-dice", async (req, res) => {
     res.status(500).json({ error: "Failed to process dice roll" });
   }
 });
-
 // Mark discount as used endpoint
 app.post("/api/mark-discount-used", async (req, res) => {
   try {
