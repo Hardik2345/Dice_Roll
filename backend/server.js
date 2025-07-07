@@ -151,13 +151,21 @@ async function shopifyGraphQLRequest(query, variables = {}) {
     );
     return response.data;
   } catch (err) {
-    console.error("Shopify GraphQL error:", err.response ? err.response.data : err);
+    console.error(
+      "Shopify GraphQL error:",
+      err.response ? err.response.data : err
+    );
     throw err;
   }
 }
 
 async function findShopifyCustomerByPhone(phone) {
-  // Shopify does not support direct phone search, so we use a customerSearch query
+  // Ensure phone has +91 country code
+  let formattedPhone = phone;
+  if (!/^\+91/.test(phone)) {
+    // Remove any leading + or 91, then add +91
+    formattedPhone = '+91' + phone.replace(/^\+?91/, '');
+  }
   const query = `
     query($query: String!) {
       customers(first: 1, query: $query) {
@@ -172,14 +180,19 @@ async function findShopifyCustomerByPhone(phone) {
       }
     }
   `;
-  const variables = { query: `phone:${phone}` };
+  const variables = { query: `phone:${formattedPhone}` };
   const data = await shopifyGraphQLRequest(query, variables);
   const edges = data?.data?.customers?.edges || [];
   return edges.length > 0 ? edges[0].node : null;
 }
 
 async function createShopifyCustomer(phone) {
-  const email = `${phone.replace(/[^\d]/g, "")}@gmail.com`;
+  // Ensure phone has +91 country code
+  let formattedPhone = phone;
+  if (!/^\+91/.test(phone)) {
+    formattedPhone = '+91' + phone.replace(/^\+?91/, '');
+  }
+  const email = `${formattedPhone.replace(/[^\d]/g, "")}@gmail.com`;
   const mutation = `
     mutation customerCreate($input: CustomerCreateInput!) {
       customerCreate(input: $input) {
@@ -191,7 +204,7 @@ async function createShopifyCustomer(phone) {
   const variables = {
     input: {
       email,
-      phone,
+      phone: formattedPhone,
     },
   };
   const data = await shopifyGraphQLRequest(mutation, variables);
@@ -199,7 +212,8 @@ async function createShopifyCustomer(phone) {
     return data.data.customerCreate.customer;
   }
   throw new Error(
-    data?.data?.customerCreate?.userErrors?.map(e => e.message).join(", ") || "Failed to create customer"
+    data?.data?.customerCreate?.userErrors?.map((e) => e.message).join(", ") ||
+      "Failed to create customer"
   );
 }
 
@@ -223,7 +237,8 @@ async function addRedeemedTagToShopifyCustomer(customerId) {
     return data.data.customerUpdate.customer;
   }
   throw new Error(
-    data?.data?.customerUpdate?.userErrors?.map(e => e.message).join(", ") || "Failed to update customer tags"
+    data?.data?.customerUpdate?.userErrors?.map((e) => e.message).join(", ") ||
+      "Failed to update customer tags"
   );
 }
 
