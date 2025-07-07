@@ -130,8 +130,8 @@ function getWeightedDiceResult() {
 }
 
 // Shopify Admin GraphQL helpers
-const SHOPIFY_SHOP_ID = "92554494247";
-const SHOPIFY_ADMIN_GRAPHQL_ENDPOINT = `https://shopify.com/${SHOPIFY_SHOP_ID}/account/customer/api/2025-07/graphql`;
+const SHOPIFY_SHOP_DOMAIN = process.env.SHOPIFY_STORE_URL || "pypyyn-d1.myshopify.com";
+const SHOPIFY_ADMIN_GRAPHQL_ENDPOINT = `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2025-07/graphql.json`;
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 async function shopifyGraphQLRequest(query, variables = {}) {
@@ -145,7 +145,7 @@ async function shopifyGraphQLRequest(query, variables = {}) {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: SHOPIFY_ACCESS_TOKEN,
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
         },
       }
     );
