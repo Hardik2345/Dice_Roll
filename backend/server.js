@@ -218,6 +218,8 @@ async function createShopifyCustomer(phone) {
 }
 
 async function addRedeemedTagToShopifyCustomer(customerId) {
+  // Log the customerId for debugging
+  console.log('Updating Shopify customer with ID:', customerId);
   const mutation = `
     mutation customerUpdate($id: ID!, $input: CustomerInput!) {
       customerUpdate(id: $id, input: $input) {
@@ -227,7 +229,7 @@ async function addRedeemedTagToShopifyCustomer(customerId) {
     }
   `;
   const variables = {
-    id: customerId,
+    id: customerId, // Should be gid://shopify/Customer/123456789
     input: {
       tags: ["redeemed"],
     },
@@ -236,6 +238,8 @@ async function addRedeemedTagToShopifyCustomer(customerId) {
   if (data?.data?.customerUpdate?.customer) {
     return data.data.customerUpdate.customer;
   }
+  // Log the full error response for debugging
+  console.error('Shopify customerUpdate userErrors:', data?.data?.customerUpdate?.userErrors);
   throw new Error(
     data?.data?.customerUpdate?.userErrors?.map((e) => e.message).join(", ") ||
       "Failed to update customer tags"
