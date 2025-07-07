@@ -240,6 +240,9 @@ async function addRedeemedTagToShopifyCustomer(customerId) {
   }
   // Log the full error response for debugging
   console.error('Shopify customerUpdate userErrors:', data?.data?.customerUpdate?.userErrors);
+  if (!data?.data?.customerUpdate?.userErrors) {
+    console.error('Full Shopify mutation response:', JSON.stringify(data, null, 2));
+  }
   throw new Error(
     data?.data?.customerUpdate?.userErrors?.map((e) => e.message).join(", ") ||
       "Failed to update customer tags"
