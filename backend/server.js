@@ -130,7 +130,8 @@ function getWeightedDiceResult() {
 }
 
 // Shopify Admin GraphQL helpers
-const SHOPIFY_SHOP_DOMAIN = process.env.SHOPIFY_STORE_URL || "pypyyn-d1.myshopify.com";
+const SHOPIFY_SHOP_DOMAIN =
+  process.env.SHOPIFY_STORE_URL || "pypyyn-d1.myshopify.com";
 const SHOPIFY_ADMIN_GRAPHQL_ENDPOINT = `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2025-07/graphql.json`;
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
@@ -164,7 +165,7 @@ async function findShopifyCustomerByPhone(phone) {
   let formattedPhone = phone;
   if (!/^\+91/.test(phone)) {
     // Remove any leading + or 91, then add +91
-    formattedPhone = '+91' + phone.replace(/^\+?91/, '');
+    formattedPhone = "+91" + phone.replace(/^\+?91/, "");
   }
   const query = `
     query($query: String!) {
@@ -190,9 +191,11 @@ async function createShopifyCustomer(phone) {
   // Ensure phone has +91 country code
   let formattedPhone = phone;
   if (!/^\+91/.test(phone)) {
-    formattedPhone = '+91' + phone.replace(/^\+?91/, '');
+    formattedPhone = "+91" + phone.replace(/^\+?91/, "");
   }
   const email = `${formattedPhone.replace(/[^\d]/g, "")}@gmail.com`;
+  // Use Shopify Customer Account API endpoint for customer creation
+  const SHOPIFY_CUSTOMER_ACCOUNT_API_ENDPOINT = `https://shopify.com/${SHOPIFY_SHOP_DOMAIN}/92554494247/account/customer/api/2025-07/graphql`;
   const mutation = `
     mutation customerCreate($input: CustomerCreateInput!) {
       customerCreate(input: $input) {
@@ -207,19 +210,52 @@ async function createShopifyCustomer(phone) {
       phone: formattedPhone,
     },
   };
-  const data = await shopifyGraphQLRequest(mutation, variables);
-  if (data?.data?.customerCreate?.customer) {
-    return data.data.customerCreate.customer;
+  try {
+    const response = await axios.post(
+      SHOPIFY_CUSTOMER_ACCOUNT_API_ENDPOINT,
+      {
+        query: mutation,
+        variables,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: SHOPIFY_ACCESS_TOKEN,
+        },
+      }
+    );
+    const data = response.data;
+    if (data?.data?.customerCreate?.customer) {
+      return data.data.customerCreate.customer;
+    }
+    // Log full error response for debugging
+    console.error(
+      "Shopify Customer Account API customerCreate userErrors:",
+      data?.data?.customerCreate?.userErrors
+    );
+    if (!data?.data?.customerCreate?.userErrors) {
+      console.error(
+        "Full Shopify Customer Account API mutation response:",
+        JSON.stringify(data, null, 2)
+      );
+    }
+    throw new Error(
+      data?.data?.customerCreate?.userErrors
+        ?.map((e) => e.message)
+        .join(", ") || "Failed to create customer via Customer Account API"
+    );
+  } catch (err) {
+    console.error(
+      "Shopify Customer Account API error:",
+      err.response ? err.response.data : err
+    );
+    throw err;
   }
-  throw new Error(
-    data?.data?.customerCreate?.userErrors?.map((e) => e.message).join(", ") ||
-      "Failed to create customer"
-  );
 }
 
 async function addRedeemedTagToShopifyCustomer(customerId) {
   // Log the customerId for debugging
-  console.log('Updating Shopify customer with ID:', customerId);
+  console.log("Updating Shopify customer with ID:", customerId);
   const mutation = `
     mutation customerUpdate($id: ID!, $input: CustomerInput!) {
       customerUpdate(id: $id, input: $input) {
@@ -239,9 +275,15 @@ async function addRedeemedTagToShopifyCustomer(customerId) {
     return data.data.customerUpdate.customer;
   }
   // Log the full error response for debugging
-  console.error('Shopify customerUpdate userErrors:', data?.data?.customerUpdate?.userErrors);
+  console.error(
+    "Shopify customerUpdate userErrors:",
+    data?.data?.customerUpdate?.userErrors
+  );
   if (!data?.data?.customerUpdate?.userErrors) {
-    console.error('Full Shopify mutation response:', JSON.stringify(data, null, 2));
+    console.error(
+      "Full Shopify mutation response:",
+      JSON.stringify(data, null, 2)
+    );
   }
   throw new Error(
     data?.data?.customerUpdate?.userErrors?.map((e) => e.message).join(", ") ||
