@@ -227,23 +227,21 @@ async function addTagToShopifyCustomer(customerId, tagsToAdd) {
 
 // Routes
 
-// Send OTP endpoint
+// Send OTP endpoint (refactored for new Shopify logic)
 app.post("/api/send-otp", async (req, res) => {
   try {
     const { name, mobile } = req.body;
-
     if (!name || !mobile) {
       return res.status(400).json({ error: "Name and mobile number required" });
     }
-
-    // Check if user has already played
-    const existingUsers = await User.find({});
-    for (let user of existingUsers) {
-      const isMatch = await bcrypt.compare(mobile, user.mobileHash);
-      if (isMatch) {
+    // Shopify: Check if customer exists by phone
+    let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
+    if (shopifyCustomer) {
+      // If customer has redeemed tag, block
+      if (shopifyCustomer.tags && shopifyCustomer.tags.includes("redeemed")) {
         return res.status(400).json({
-          error: "You have already played this game!",
-          alreadyPlayed: true,
+          error: "Oops! It seems like you have already redeemed your discount.",
+          alreadyRedeemed: true,
         });
       }
       // Store Shopify customerId in session
@@ -258,19 +256,16 @@ app.post("/api/send-otp", async (req, res) => {
     }
     // Store user info and OTP generation time in session
     req.session.userInfo = { name, mobile };
-    req.session.generateOTPAt = new Date(); // Track OTP generation time
-    req.session.playedAt = new Date(); // Track when user enters
-
+    req.session.generateOTPAt = new Date();
+    req.session.playedAt = new Date();
     // In production, integrate with actual OTP service
     console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
-
     // Log funnel event: entered
     await FunnelEvent.create({ mobile, name, eventType: "entered" });
     io.emit("funnelEventUpdate");
     // Log funnel event: otp_sent
     await FunnelEvent.create({ mobile, name, eventType: "otp_sent" });
     io.emit("funnelEventUpdate");
-
     res.json({
       success: true,
       message: "OTP sent successfully",
@@ -336,21 +331,17 @@ app.post("/api/verify-otp", async (req, res) => {
 });
 
 // Roll dice endpoint - Updated with Shopify integration
-// Roll dice endpoint - Updated with Shopify integration and redeemed tag check
+// Roll dice endpoint (refactored for new Shopify logic)
 app.post("/api/roll-dice", async (req, res) => {
   try {
     if (!req.session.verified || !req.session.userInfo) {
       return res
         .status(401)
         .json({ error: "Unauthorized. Please verify OTP first." });
-      return res
-        .status(401)
-        .json({ error: "Unauthorized. Please verify OTP first." });
     }
-
     const { name, mobile } = req.session.userInfo;
-
-    // Double-check if user has already played
+    const shopifyCustomerId = req.session.shopifyCustomerId;
+    // Double-check if user has already played (local DB check)
     const existingUsers = await User.find({});
     for (let user of existingUsers) {
       const isMatch = await bcrypt.compare(mobile, user.mobileHash);
@@ -361,78 +352,11 @@ app.post("/api/roll-dice", async (req, res) => {
         });
       }
     }
-
-    const mobileWithoutCountryCode = mobile.replace(/^\+?91/, ""); // Remove +91 or 91 if present
-    const phonePatterns = [
-      mobile, // Original format
-      `+91${mobileWithoutCountryCode}`, // With +91
-      `91${mobileWithoutCountryCode}`, // With 91 (no +)
-      mobileWithoutCountryCode, // Just the 10 digits
-      `+${mobile}`, // Original with +
-    ];
-
-    // Find customer tag with any of these phone number formats
-    const customerTag = await CustomerTag.findOne({
-      phoneNumber: `+91${mobileWithoutCountryCode}`,
-    });
-
-    console.log("mobile without country code", mobileWithoutCountryCode);
-
-    console.log("Customer tag found:", customerTag);
-
-    if (customerTag && customerTag.tags.includes("redeemed")) {
-      // User already has a discount, let them play but don't generate new discount
-      const diceResult = getWeightedDiceResult();
-
-      // Hash mobile number for storage
-      const mobileHash = await hashMobile(mobile);
-
-      // Save user record but mark as already redeemed
-      let user = new User({
-        mobileHash,
-        name,
-        discountCode: "ALREADY_REDEEMED",
-        diceResult,
-        shopifyPriceRuleId: null,
-        shopifyDiscountCodeId: null,
-        isShopifyCode: false,
-        alreadyRedeemed: true, // Add this field to your User model
-        generateOTPAt: req.session.generateOTPAt,
-        enteredOTPAt: req.session.enteredOTPAt,
-        rollDiceAt: new Date(),
-        playedAt: req.session.playedAt,
-      });
-      await user.save();
-
-      // Log funnel event: dice_rolled
-      await FunnelEvent.create({
-        mobile,
-        name,
-        eventType: "dice_rolled",
-        userId: user._id,
-        discountCode: "ALREADY_REDEEMED",
-        alreadyRedeemed: true,
-      });
-      io.emit("funnelEventUpdate");
-
-      // Clear session
-      req.session.destroy();
-
-      return res.json({
-        success: true,
-        diceResult,
-        alreadyRedeemed: true,
-        message: "Oops! It seems like you have already redeemed your discount.",
-      });
-    }
-
     // Generate weighted dice result (1-6)
     const diceResult = getWeightedDiceResult();
-
     // Create discount in Shopify (rest of the code remains the same)
     let shopifyDiscount;
     let useShopify = true;
-
     try {
       shopifyDiscount = await shopifyService.createDiceRollDiscount(
         diceResult,
@@ -443,14 +367,9 @@ app.post("/api/roll-dice", async (req, res) => {
         "Shopify discount created successfully:",
         shopifyDiscount.code
       );
-      console.log(
-        "Shopify discount created successfully:",
-        shopifyDiscount.code
-      );
     } catch (shopifyError) {
       console.error("Shopify integration error:", shopifyError);
       useShopify = false;
-
       // Fallback to local discount code if Shopify fails
       const discountInfo = DISCOUNT_CODES[diceResult];
       shopifyDiscount = {
@@ -461,10 +380,8 @@ app.post("/api/roll-dice", async (req, res) => {
         shopifyUrl: null,
       };
     }
-
     // Hash mobile number for storage
     const mobileHash = await hashMobile(mobile);
-
     // Save user record with Shopify details
     let user = await User.findOne({ name, mobileHash });
     if (!user) {
@@ -478,7 +395,7 @@ app.post("/api/roll-dice", async (req, res) => {
         isShopifyCode: useShopify,
         generateOTPAt: req.session.generateOTPAt,
         enteredOTPAt: req.session.enteredOTPAt,
-        rollDiceAt: new Date(), // Track when dice is rolled
+        rollDiceAt: new Date(),
         playedAt: req.session.playedAt,
       });
       await user.save();
@@ -500,15 +417,21 @@ app.post("/api/roll-dice", async (req, res) => {
       name,
       eventType: "dice_rolled",
       userId: user._id,
-      discountCode: user.discountCode, // Add discountCode to dice_rolled event
+      discountCode: user.discountCode,
     });
     io.emit("funnelEventUpdate");
     // Always update all funnel events for this mobile with the correct userId and name
     await FunnelEvent.updateMany({ mobile }, { userId: user._id, name });
-
+    // Add the 'redeemed' tag to the Shopify customer (REST Admin API)
+    if (shopifyCustomerId) {
+      try {
+        await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
+      } catch (err) {
+        console.error("Failed to add redeemed tag to Shopify customer:", err);
+      }
+    }
     // Clear session
     req.session.destroy();
-
     res.json({
       success: true,
       diceResult,
