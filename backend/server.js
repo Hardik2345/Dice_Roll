@@ -129,6 +129,102 @@ function getWeightedDiceResult() {
   return 1;
 }
 
+// --- Shopify Admin API helpers (REST + GraphQL) ---
+const SHOPIFY_SHOP_DOMAIN = process.env.SHOPIFY_STORE_URL;
+const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+
+// 1. Search customer by phone (REST Admin API)
+async function findShopifyCustomerByPhone(phone) {
+  // Use phone as-is, no formatting
+  try {
+    const response = await axios.get(
+      `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-07/customers/search.json`,
+      {
+        params: { query: `phone:${phone}` },
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    // Returns an array of customers (may be empty)
+    return response.data.customers && response.data.customers.length > 0
+      ? response.data.customers[0]
+      : null;
+  } catch (err) {
+    console.error(
+      "Shopify REST search error:",
+      err.response ? err.response.data : err
+    );
+    throw err;
+  }
+}
+
+// 2. Create customer (REST Admin API)
+async function createShopifyCustomer(phone) {
+  let formattedPhone = phone;
+  if (!/^\+91/.test(phone)) {
+    formattedPhone = "+91" + phone.replace(/^\+?91/, "");
+  }
+  const email = `${formattedPhone.replace(/[^\d]/g, "")}@gmail.com`;
+  const payload = {
+    customer: {
+      phone: formattedPhone,
+      email,
+    },
+  };
+  try {
+    const response = await axios.post(
+      `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-07/customers.json`,
+      payload,
+      {
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data.customer;
+  } catch (err) {
+    console.error(
+      "Shopify REST create error:",
+      err.response ? err.response.data : err
+    );
+    throw err;
+  }
+}
+
+// 3. Add tag to customer (REST Admin API)
+async function addTagToShopifyCustomer(customerId, tagsToAdd) {
+  // tagsToAdd: array of tags to add (e.g. ["redeemed"])
+  const tagsAsString = tagsToAdd.join(", ");
+  const payload = {
+    customer: {
+      id: customerId,
+      tags: tagsAsString,
+    },
+  };
+  try {
+    const response = await axios.put(
+      `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-07/customers/${customerId}.json`,
+      payload,
+      {
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data.customer;
+  } catch (err) {
+    console.error(
+      "Shopify REST tag update error:",
+      err.response ? err.response.data : err
+    );
+    throw err;
+  }
+}
+
 // Routes
 
 // Send OTP endpoint
@@ -150,8 +246,16 @@ app.post("/api/send-otp", async (req, res) => {
           alreadyPlayed: true,
         });
       }
+      // Store Shopify customerId in session
+      req.session.shopifyCustomerId = shopifyCustomer.id.replace(
+        /gid:\/\/shopify\/Customer\//,
+        ""
+      );
+    } else {
+      // Customer does not exist, create
+      const created = await createShopifyCustomer(mobile);
+      req.session.shopifyCustomerId = created.id;
     }
-
     // Store user info and OTP generation time in session
     req.session.userInfo = { name, mobile };
     req.session.generateOTPAt = new Date(); // Track OTP generation time
@@ -236,6 +340,9 @@ app.post("/api/verify-otp", async (req, res) => {
 app.post("/api/roll-dice", async (req, res) => {
   try {
     if (!req.session.verified || !req.session.userInfo) {
+      return res
+        .status(401)
+        .json({ error: "Unauthorized. Please verify OTP first." });
       return res
         .status(401)
         .json({ error: "Unauthorized. Please verify OTP first." });
@@ -331,6 +438,10 @@ app.post("/api/roll-dice", async (req, res) => {
         diceResult,
         name,
         mobile
+      );
+      console.log(
+        "Shopify discount created successfully:",
+        shopifyDiscount.code
       );
       console.log(
         "Shopify discount created successfully:",
