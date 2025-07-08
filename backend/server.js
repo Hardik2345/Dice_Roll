@@ -244,11 +244,8 @@ app.post("/api/send-otp", async (req, res) => {
           alreadyRedeemed: true,
         });
       }
-      // Store Shopify customerId in session
-      req.session.shopifyCustomerId = shopifyCustomer.id.replace(
-        /gid:\/\/shopify\/Customer\//,
-        ""
-      );
+      // Store Shopify customerId in session (REST API returns numeric ID)
+      req.session.shopifyCustomerId = shopifyCustomer.id;
     } else {
       // Customer does not exist, create
       const created = await createShopifyCustomer(mobile);
