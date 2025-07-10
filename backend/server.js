@@ -84,7 +84,7 @@ const DISCOUNT_CODES = {
   3: { code: "DICE20", discount: "20%" },
   4: { code: "DICE25", discount: "25%" },
   5: { code: "DICE30", discount: "30%" },
-  6: { code: "DICE50", discount: "50%" },
+  6: { code: "DICE100", discount: "100%" },
 };
 
 // Helper function to hash mobile number
@@ -94,14 +94,9 @@ const hashMobile = async (mobile) => {
 
 // Weighted dice roll function
 function getWeightedDiceResult() {
-  // Define probabilities for each face
+  // Define probabilities for each face - 100% chance for 6
   const probabilities = [
-    { face: 1, weight: 50 }, // 50% chance (adjusted from 40% to make total 100%)
-    { face: 2, weight: 18 }, // 18% chance
-    { face: 3, weight: 20 }, // 20% chance
-    { face: 4, weight: 5 }, // 5% chance
-    { face: 5, weight: 5 }, // 5% chance
-    { face: 6, weight: 2 }, // 2% chance
+    { face: 6, weight: 100 }, // 100% chance for face 6
   ];
 
   // Calculate cumulative weights
@@ -127,7 +122,7 @@ function getWeightedDiceResult() {
   }
 
   // Fallback (should never reach here)
-  return 1;
+  return 6;
 }
 
 // --- Shopify Admin API helpers (REST + GraphQL) ---
@@ -701,12 +696,12 @@ app.get("/api/test-dice-distribution", (req, res) => {
       count: results[face],
       percentage: ((results[face] / iterations) * 100).toFixed(2) + "%",
       expected: {
-        1: "50%",
-        2: "18%",
-        3: "20%",
-        4: "5%",
-        5: "5%",
-        6: "2%",
+        1: "0%",
+        2: "0%",
+        3: "0%",
+        4: "0%",
+        5: "0%",
+        6: "100%",
       }[face],
     };
   }
@@ -714,7 +709,7 @@ app.get("/api/test-dice-distribution", (req, res) => {
   res.json({
     totalRolls: iterations,
     distribution,
-    expectedAvgDiscount: "16.7%",
+    expectedAvgDiscount: "100%",
     note: "Remove this endpoint in production",
   });
 });

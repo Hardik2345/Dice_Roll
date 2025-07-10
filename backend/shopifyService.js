@@ -78,7 +78,7 @@ class ShopifyService {
       3: 20,
       4: 25,
       5: 30,
-      6: 50,
+      6: 100,
     };
 
     const percentage = discountPercentages[diceResult];
@@ -146,7 +146,7 @@ class ShopifyService {
       3: 20,
       4: 25,
       5: 30,
-      6: 50,
+      6: 100,
     };
 
     const percentage = discountPercentages[diceResult];
