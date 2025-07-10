@@ -56,7 +56,7 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || "dice-roll-secret",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       secure: true, // required for cookies to be sent over HTTPS
       httpOnly: true,
@@ -64,6 +64,7 @@ app.use(
       maxAge: 1000 * 60 * 30, // 30 minutes
     },
     name: "dice-roll-session",
+    rolling: true,
   })
 );
 
