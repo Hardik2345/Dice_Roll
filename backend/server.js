@@ -157,7 +157,7 @@ async function findShopifyCustomerByPhone(phone) {
 }
 
 // 2. Create customer (REST Admin API)
-async function createShopifyCustomer(phone) {
+async function createShopifyCustomer(phone, name) {
   let formattedPhone = phone;
   if (!/^\+91/.test(phone)) {
     formattedPhone = "+91" + phone.replace(/^\+?91/, "");
@@ -167,6 +167,7 @@ async function createShopifyCustomer(phone) {
     customer: {
       phone: formattedPhone,
       email,
+      first_name: name,
     },
   };
   try {
@@ -244,7 +245,7 @@ app.post("/api/send-otp", async (req, res) => {
       req.session.shopifyCustomerId = shopifyCustomer.id;
     } else {
       // Customer does not exist, create
-      const created = await createShopifyCustomer(mobile);
+      const created = await createShopifyCustomer(mobile, name);
       req.session.shopifyCustomerId = created.id;
     }
     // Store user info and OTP generation time in session
