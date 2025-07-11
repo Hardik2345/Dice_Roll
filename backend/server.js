@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const session = require("express-session");
 const axios = require("axios");
 const http = require("http");
+const MongoStore = require("connect-mongo");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
@@ -57,6 +58,11 @@ app.use(
     secret: process.env.SESSION_SECRET || "dice-roll-secret",
     resave: false,
     saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI,
+      collectionName: "sessions",
+      ttl: 60 * 30, // 30 minutes
+    }),
     cookie: {
       secure: true, // required for cookies to be sent over HTTPS
       httpOnly: true,
