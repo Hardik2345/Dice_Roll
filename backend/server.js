@@ -80,9 +80,6 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Hardcoded OTP for development
-const HARDCODED_OTP = "123456";
-
 // Discount code mappings (fallback for when Shopify is unavailable)
 const DISCOUNT_CODES = {
   1: { code: "DICE10", discount: "10%" },
@@ -97,6 +94,42 @@ const DISCOUNT_CODES = {
 const hashMobile = async (mobile) => {
   return await bcrypt.hash(mobile, 10);
 };
+
+// Helper function to generate random OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Helper function to send OTP via SMS gateway
+async function sendOTPSMS(mobile, otp) {
+  try {
+    const otpMessage = `Your OTP for registration on our website https://blabliblulife.com is ${otp}. Do not share this code with anyone. Valid for 10 minutes only. - Team Bla Bli Blu Life`;
+
+    const params = new URLSearchParams({
+      user: "BBBLYF",
+      password: "DYaha54h",
+      senderid: "BBBLYF",
+      channel: "Trans",
+      DCS: "0",
+      flashsms: "0",
+      number: mobile,
+      text: otpMessage,
+      route: "15",
+      DLTTemplateId: "1707175214642593740",
+      PEID: "1701175126372816101",
+    });
+
+    const response = await axios.get(
+      `http://alots.co.in/api/mt/SendSMS?${params.toString()}`
+    );
+
+    console.log("SMS API Response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("SMS sending error:", error);
+    throw error;
+  }
+}
 
 // Weighted dice roll function
 function getWeightedDiceResult() {
@@ -254,22 +287,39 @@ app.post("/api/send-otp", async (req, res) => {
       const created = await createShopifyCustomer(mobile, name);
       req.session.shopifyCustomerId = created.id;
     }
-    // Store user info and OTP generation time in session
+
+    // Generate random OTP
+    const otp = generateOTP();
+
+    // Store user info, OTP and OTP generation time in session
     req.session.userInfo = { name, mobile };
+    req.session.otp = otp;
     req.session.generateOTPAt = new Date();
     req.session.playedAt = new Date();
-    // In production, integrate with actual OTP service
-    console.log(`OTP for ${mobile}: ${HARDCODED_OTP}`);
+
+    // Send OTP via SMS gateway
+    try {
+      await sendOTPSMS(mobile, otp);
+      console.log(`OTP sent to ${mobile}: ${otp}`);
+    } catch (smsError) {
+      console.error("Failed to send SMS:", smsError);
+      // You may want to decide whether to fail the request or continue
+      // For now, we'll continue but log the error
+    }
+
     // Log funnel event: entered
     await FunnelEvent.create({ mobile, name, eventType: "entered" });
     io.emit("funnelEventUpdate");
     // Log funnel event: otp_sent
     await FunnelEvent.create({ mobile, name, eventType: "otp_sent" });
     io.emit("funnelEventUpdate");
+
     res.json({
       success: true,
       message: "OTP sent successfully",
-      debug: "Use OTP: 123456", // Remove in production
+      // Remove debug OTP in production
+      debug:
+        process.env.NODE_ENV === "development" ? `Use OTP: ${otp}` : undefined,
     });
   } catch (error) {
     console.error("Send OTP error:", error);
@@ -286,10 +336,6 @@ app.post("/api/verify-otp", async (req, res) => {
   try {
     const { otp } = req.body;
 
-    // const mobileHash = await hashMobile(mobile);
-
-    // let user = await User.findOne({ mobileHash });
-
     if (!req.session.userInfo) {
       console.log("ERROR: No user info in session!");
       return res
@@ -297,19 +343,38 @@ app.post("/api/verify-otp", async (req, res) => {
         .json({ error: "Session expired. Please start again." });
     }
 
-    if (otp !== HARDCODED_OTP) {
+    if (!req.session.otp) {
+      console.log("ERROR: No OTP in session!");
+      return res
+        .status(400)
+        .json({ error: "OTP expired. Please request a new OTP." });
+    }
+
+    // Check if OTP is older than 10 minutes
+    const otpAge = new Date() - new Date(req.session.generateOTPAt);
+    const tenMinutes = 10 * 60 * 1000;
+    if (otpAge > tenMinutes) {
+      console.log("ERROR: OTP expired!");
+      delete req.session.otp; // Clear expired OTP
+      return res
+        .status(400)
+        .json({ error: "OTP expired. Please request a new OTP." });
+    }
+
+    if (otp !== req.session.otp) {
       console.log(
         "ERROR: OTP mismatch!",
         "Received:",
         otp,
         "Expected:",
-        HARDCODED_OTP
+        req.session.otp
       );
       return res.status(400).json({ error: "Invalid OTP" });
     } else {
       // Mark session as verified
       req.session.verified = true;
       req.session.enteredOTPAt = new Date(); // Track OTP entered time
+      delete req.session.otp; // Clear OTP after successful verification
       console.log("SUCCESS: OTP verified!");
       // Log funnel event: otp_verified
       await FunnelEvent.create({
