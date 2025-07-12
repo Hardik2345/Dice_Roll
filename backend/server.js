@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
@@ -491,6 +492,24 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
+        const flits = {
+          customer_email: `${mobile}@gmail.com`,
+          credit_details: {
+            credit_value: 399,
+            comment_text: `Rewarding the user 399 in his wallet`,
+          },
+        };
+
+        const ress = await axios.post(
+          "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
+          data,
+          {
+            headers: {
+              "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
+            },
+          }
+        );
+        console.log(ress);
       } catch (err) {
         console.error("Failed to add redeemed tag to Shopify customer:", err);
       }
