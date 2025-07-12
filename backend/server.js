@@ -501,7 +501,7 @@ app.post("/api/roll-dice", async (req, res) => {
 
         const ress = await axios.post(
           "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
-          data,
+          flits,
           {
             headers: {
               "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
