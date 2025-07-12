@@ -508,7 +508,7 @@ app.post("/api/roll-dice", async (req, res) => {
             },
           }
         );
-        console.log(ress);
+        console.log("Flits response recieved:", ress);
       } catch (err) {
         console.error("Failed to add redeemed tag to Shopify customer:", err);
       }
@@ -887,10 +887,8 @@ app.use(
 app.post("/api/shopify/webhook/discount-used", async (req, res) => {
   try {
     // Debug: log the full body for troubleshooting
-    console.log("Shopify webhook raw body received:", req.body);
     // Shopify sends the payload as JSON (order object)
     const discountCodes = req.body.discount_codes;
-    console.log("Shopify webhook received:", discountCodes);
     if (
       !discountCodes ||
       !Array.isArray(discountCodes) ||
@@ -936,7 +934,6 @@ app.post("/api/shopify/webhook/discount-used", async (req, res) => {
 app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
   try {
     // Log the incoming payload for debugging
-    console.log("Shopify customer tag webhook received:", req.body);
     let { customerId, tags } = req.body;
     if (!customerId || !Array.isArray(tags)) {
       return res
@@ -957,7 +954,6 @@ app.post("/api/shopify/webhook/customer-tag-added", async (req, res) => {
           "X-Shopify-Access-Token": process.env.SHOPIFY_ACCESS_TOKEN,
         },
       });
-      console.log("Shopify customer details:", response.data);
       if (
         response.data &&
         response.data.customer &&
