@@ -195,17 +195,16 @@ async function findShopifyCustomerByPhone(phone) {
   }
 }
 
-// 2. Create customer (REST Admin API)
-async function createShopifyCustomer(phone, name) {
+// 2. Create customer (REST Admin API) - UPDATED TO ACCEPT EMAIL
+async function createShopifyCustomer(phone, name, email) {
   let formattedPhone = phone;
   if (!/^\+91/.test(phone)) {
     formattedPhone = "+91" + phone.replace(/^\+?91/, "");
   }
-  const email = `${formattedPhone.replace(/[^\d]/g, "")}@gmail.com`;
   const payload = {
     customer: {
       phone: formattedPhone,
-      email,
+      email: email, // Use the provided email instead of generated one
       first_name: name,
     },
   };
@@ -263,13 +262,23 @@ async function addTagToShopifyCustomer(customerId, tagsToAdd) {
 
 // Routes
 
-// Send OTP endpoint (refactored for new Shopify logic)
+// Send OTP endpoint (refactored for new Shopify logic) - UPDATED TO ACCEPT EMAIL
 app.post("/api/send-otp", async (req, res) => {
   try {
-    const { name, mobile } = req.body;
-    if (!name || !mobile) {
-      return res.status(400).json({ error: "Name and mobile number required" });
+    const { name, mobile, email } = req.body;
+
+    if (!name || !mobile || !email) {
+      return res
+        .status(400)
+        .json({ error: "Name, email and mobile number required" });
     }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
     // Shopify: Check if customer exists by phone
     let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
     if (shopifyCustomer) {
@@ -283,16 +292,16 @@ app.post("/api/send-otp", async (req, res) => {
       // Store Shopify customerId in session (REST API returns numeric ID)
       req.session.shopifyCustomerId = shopifyCustomer.id;
     } else {
-      // Customer does not exist, create
-      const created = await createShopifyCustomer(mobile, name);
+      // Customer does not exist, create with provided email
+      const created = await createShopifyCustomer(mobile, name, email);
       req.session.shopifyCustomerId = created.id;
     }
 
     // Generate random OTP
     const otp = generateOTP();
 
-    // Store user info, OTP and OTP generation time in session
-    req.session.userInfo = { name, mobile };
+    // Store user info (including email), OTP and OTP generation time in session
+    req.session.userInfo = { name, mobile, email };
     req.session.otp = otp;
     req.session.generateOTPAt = new Date();
     req.session.playedAt = new Date();
@@ -395,8 +404,7 @@ app.post("/api/verify-otp", async (req, res) => {
   }
 });
 
-// Roll dice endpoint - Updated with Shopify integration
-// Roll dice endpoint (refactored for new Shopify logic)
+// Roll dice endpoint - Updated with Shopify integration and EMAIL FOR FLITS
 app.post("/api/roll-dice", async (req, res) => {
   try {
     if (!req.session.verified || !req.session.userInfo) {
@@ -404,7 +412,7 @@ app.post("/api/roll-dice", async (req, res) => {
         .status(401)
         .json({ error: "Unauthorized. Please verify OTP first." });
     }
-    const { name, mobile } = req.session.userInfo;
+    const { name, mobile, email } = req.session.userInfo;
     const shopifyCustomerId = req.session.shopifyCustomerId;
     // Double-check if user has already played (local DB check)
     const existingUsers = await User.find({});
@@ -447,12 +455,13 @@ app.post("/api/roll-dice", async (req, res) => {
     }
     // Hash mobile number for storage
     const mobileHash = await hashMobile(mobile);
-    // Save user record with Shopify details
+    // Save user record with Shopify details and EMAIL
     let user = await User.findOne({ name, mobileHash });
     if (!user) {
       user = new User({
         mobileHash,
         name,
+        email,
         discountCode: shopifyDiscount.code,
         diceResult,
         shopifyPriceRuleId: shopifyDiscount.priceRuleId,
@@ -465,6 +474,7 @@ app.post("/api/roll-dice", async (req, res) => {
       });
       await user.save();
     } else {
+      user.email = email;
       user.discountCode = shopifyDiscount.code;
       user.diceResult = diceResult;
       user.shopifyPriceRuleId = shopifyDiscount.priceRuleId;
@@ -491,8 +501,10 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
+
+        // Use actual email for Flits integration
         const flits = {
-          customer_email: `${mobile}@gmail.com`,
+          customer_email: email, // Use the actual email provided by user
           credit_details: {
             credit_value: 399,
             comment_text: `Rewarding the user 399 in his wallet`,
