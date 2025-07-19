@@ -60,22 +60,22 @@ const sessionStore = MongoStore.create({
   touchAfter: 24 * 3600, // 24 hours
 });
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dice-roll-secret",
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore, // 30 minutes
-    cookie: {
-      secure: true, // required for cookies to be sent over HTTPS
-      httpOnly: true,
-      sameSite: "none", // required for cross-site cookies
-      maxAge: 1000 * 60 * 30, // 30 minutes
-    },
-    name: "dice-roll-session",
-    rolling: true,
-  })
-);
+const sessionMiddleware = session({
+  secret: process.env.SESSION_SECRET || "dice-roll-secret",
+  resave: false,
+  saveUninitialized: false,
+  store: sessionStore, // 30 minutes
+  cookie: {
+    secure: true, // required for cookies to be sent over HTTPS
+    httpOnly: true,
+    sameSite: "none", // required for cross-site cookies
+    maxAge: 1000 * 60 * 30, // 30 minutes
+  },
+  name: "dice-roll-session",
+  rolling: true,
+});
+
+app.use(sessionMiddleware);
 
 // MongoDB connection
 mongoose
