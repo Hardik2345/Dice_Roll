@@ -53,16 +53,19 @@ app.options("/api/verify-otp", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Support urlencoded bodies
 
+const sessionStore = MongoStore.create({
+  mongoUrl:
+    process.env.MONGODB_URI || "mongodb://localhost:27017/dice-roll-app",
+  collectionName: "sessions", // It's good practice to name the collection
+  touchAfter: 24 * 3600, // 24 hours
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dice-roll-secret",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI,
-      collectionName: "sessions",
-      ttl: 60 * 30, // 30 minutes
-    }),
+    store: sessionStore, // 30 minutes
     cookie: {
       secure: true, // required for cookies to be sent over HTTPS
       httpOnly: true,
