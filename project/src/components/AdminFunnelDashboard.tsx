@@ -44,13 +44,14 @@ const AdminFunnelDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [mobileSearch, setMobileSearch] = useState<string>("");
+  const [debouncedMobileSearch, setDebouncedMobileSearch] = useState<string>("");
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await axios.get(`${API_BASE}/api/admin/funnel-stats`, {
-        params: { startDate, endDate, mobile: mobileSearch, t: Date.now() },
+        params: { startDate, endDate, mobile: debouncedMobileSearch, t: Date.now() },
       });
       console.log(res.data);
       setStats(res.data);
@@ -62,7 +63,16 @@ const AdminFunnelDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, mobileSearch]);
+  }, [startDate, endDate, debouncedMobileSearch]);
+
+  // Debounce mobile search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMobileSearch(mobileSearch);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [mobileSearch]);
 
   useEffect(() => {
     fetchStats();

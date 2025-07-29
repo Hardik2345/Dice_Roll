@@ -80,6 +80,12 @@ const apiService = {
     api.get<DashboardStats>("/api/admin/dashboard-stats", {
       params: { startDate, endDate },
     }),
+
+  // Mark discount as used
+  markDiscountUsed: (discountCode: string) =>
+    api.post<{ success: boolean; message: string }>("/api/mark-discount-used", {
+      discountCode,
+    }),
 };
 
 // Export types for use in components
