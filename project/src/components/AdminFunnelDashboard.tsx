@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
-import apiService from "../services/api";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -109,27 +108,6 @@ const AdminFunnelDashboard: React.FC = () => {
       socket.disconnect();
     };
   }, [fetchStats]);
-
-  const handleMarkDiscountUsed = async (discountCode: string) => {
-    try {
-      setLoading(true);
-      setError("");
-      await apiService.markDiscountUsed(discountCode);
-      fetchStats();
-    } catch (error) {
-      console.error("Error marking discount as used:", error);
-      setError("Failed to mark discount as used");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Helper to extract mobile from discount code
-  function extractMobileFromDiscountCode(discountCode?: string) {
-    if (!discountCode) return "-";
-    const match = discountCode.match(/(\d{10})$/);
-    return match ? match[1] : "-";
-  }
 
   // Function to render the funnel chart
   const renderFunnelChart = () => {
@@ -279,9 +257,6 @@ const AdminFunnelDashboard: React.FC = () => {
           <th className="border px-2 py-1">Name</th>
           <th className="border px-2 py-1">Mobile</th>
           <th className="border px-2 py-1">Timestamp</th>
-          {activeTab === "dice_rolled" && (
-            <th className="border px-2 py-1">Action</th>
-          )}
         </tr>
       </thead>
       <tbody>
@@ -289,26 +264,8 @@ const AdminFunnelDashboard: React.FC = () => {
           <tr key={e._id}>
             <td className="border px-2 py-1">{i + 1}</td>
             <td className="border px-2 py-1">{e.name || "-"}</td>
-            <td className="border px-2 py-1">
-              {activeTab === "dice_rolled"
-                ? extractMobileFromDiscountCode(e.discountCode)
-                : e.mobile}
-            </td>
+            <td className="border px-2 py-1">{e.mobile}</td>
             <td className="border px-2 py-1">{formatDate(e.timestamp)}</td>
-            {activeTab === "dice_rolled" && (
-              <td className="border px-2 py-1">
-                {e.discountCode ? (
-                  <button
-                    className="bg-green-600 text-white px-2 py-1 rounded text-xs"
-                    onClick={() => handleMarkDiscountUsed(e.discountCode!)}
-                  >
-                    Mark as Used
-                  </button>
-                ) : (
-                  <span className="text-gray-400 text-xs">N/A</span>
-                )}
-              </td>
-            )}
           </tr>
         ))}
       </tbody>
