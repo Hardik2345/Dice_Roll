@@ -2,6 +2,26 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import apiService from "../services/api";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const API_BASE = "https://dice-roll-admin.onrender.com";
 
@@ -10,7 +30,7 @@ const TABS = [
   { key: "otp_sent", label: "OTP Sent" },
   { key: "otp_verified", label: "Verified OTP" },
   { key: "dice_rolled", label: "Rolled Dice" },
-  { key: "discount_used", label: "Used Discount" },
+  { key: "funnel", label: "Funnel" },
 ];
 
 function formatDate(dateStr: string) {
@@ -111,6 +131,146 @@ const AdminFunnelDashboard: React.FC = () => {
     return match ? match[1] : "-";
   }
 
+  // Function to render the funnel chart
+  const renderFunnelChart = () => {
+    if (!stats) return null;
+
+    const funnelData = [
+      { label: "Entered", count: stats.entered?.count || 0, color: "#3B82F6" },
+      { label: "OTP Sent", count: stats.otp_sent?.count || 0, color: "#6366F1" },
+      { label: "OTP Verified", count: stats.otp_verified?.count || 0, color: "#8B5CF6" },
+      { label: "Dice Rolled", count: stats.dice_rolled?.count || 0, color: "#A855F7" },
+    ];
+
+    const chartData = {
+      labels: funnelData.map(item => item.label),
+      datasets: [
+        {
+          label: 'Count',
+          data: funnelData.map(item => item.count),
+          backgroundColor: funnelData.map(item => item.color),
+          borderColor: funnelData.map(item => item.color),
+          borderWidth: 1,
+          borderRadius: 8,
+          borderSkipped: false,
+        },
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        title: {
+          display: true,
+          text: 'Funnel Analytics',
+          font: {
+            size: 18,
+            weight: 'bold' as const,
+          },
+          padding: 20,
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context: any) {
+              const value = context.parsed.y;
+              const total = funnelData[0].count;
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+              return `${context.label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: '#E5E7EB',
+          },
+          ticks: {
+            font: {
+              size: 12,
+            },
+          },
+        },
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            font: {
+              size: 12,
+            },
+          },
+        },
+      },
+    };
+
+    // Calculate conversion rates
+    const conversionRates = [
+      {
+        from: "Entered",
+        to: "OTP Sent", 
+        rate: funnelData[0].count > 0 ? ((funnelData[1].count / funnelData[0].count) * 100).toFixed(1) : '0'
+      },
+      {
+        from: "OTP Sent",
+        to: "OTP Verified",
+        rate: funnelData[1].count > 0 ? ((funnelData[2].count / funnelData[1].count) * 100).toFixed(1) : '0'
+      },
+      {
+        from: "OTP Verified", 
+        to: "Dice Rolled",
+        rate: funnelData[2].count > 0 ? ((funnelData[3].count / funnelData[2].count) * 100).toFixed(1) : '0'
+      }
+    ];
+
+    return (
+      <div className="space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          {funnelData.map((item) => (
+            <div key={item.label} className="bg-white p-4 rounded-lg border shadow-sm">
+              <div className="flex items-center">
+                <div 
+                  className="w-4 h-4 rounded mr-3"
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{item.label}</p>
+                  <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Conversion Rates */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3">Conversion Rates</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {conversionRates.map((conversion, index) => (
+              <div key={index} className="text-center">
+                <p className="text-sm text-gray-600">{conversion.from} → {conversion.to}</p>
+                <p className="text-xl font-bold text-blue-600">{conversion.rate}%</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="bg-white p-6 rounded-lg border shadow-sm">
+          <div style={{ height: '400px' }}>
+            <Bar data={chartData} options={options} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderTable = (events: FunnelEvent[]) => (
     <table className="min-w-full border mt-4">
       <thead>
@@ -119,7 +279,7 @@ const AdminFunnelDashboard: React.FC = () => {
           <th className="border px-2 py-1">Name</th>
           <th className="border px-2 py-1">Mobile</th>
           <th className="border px-2 py-1">Timestamp</th>
-          {activeTab === "discount_used" && (
+          {activeTab === "dice_rolled" && (
             <th className="border px-2 py-1">Action</th>
           )}
         </tr>
@@ -130,12 +290,12 @@ const AdminFunnelDashboard: React.FC = () => {
             <td className="border px-2 py-1">{i + 1}</td>
             <td className="border px-2 py-1">{e.name || "-"}</td>
             <td className="border px-2 py-1">
-              {activeTab === "discount_used"
+              {activeTab === "dice_rolled"
                 ? extractMobileFromDiscountCode(e.discountCode)
                 : e.mobile}
             </td>
             <td className="border px-2 py-1">{formatDate(e.timestamp)}</td>
-            {activeTab === "discount_used" && (
+            {activeTab === "dice_rolled" && (
               <td className="border px-2 py-1">
                 {e.discountCode ? (
                   <button
@@ -214,11 +374,17 @@ const AdminFunnelDashboard: React.FC = () => {
       {error && <div className="text-red-600 mb-2">{error}</div>}
       {stats && (
         <div>
-          <div className="font-semibold mb-2">
-            Total {TABS.find((t) => t.key === activeTab)?.label}:{" "}
-            {stats[activeTab]?.count || 0}
-          </div>
-          {renderTable(stats[activeTab]?.events || [])}
+          {activeTab === "funnel" ? (
+            renderFunnelChart()
+          ) : (
+            <>
+              <div className="font-semibold mb-2">
+                Total {TABS.find((t) => t.key === activeTab)?.label}:{" "}
+                {stats[activeTab]?.count || 0}
+              </div>
+              {renderTable(stats[activeTab]?.events || [])}
+            </>
+          )}
         </div>
       )}
     </div>
