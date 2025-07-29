@@ -16,6 +16,7 @@ const ShopifyService = require("./shopifyService");
 
 const allowedOrigins = [
   "https://dice-roll-5wsv-git-localdev-hardiks-projects-4c8d6fa8.vercel.app",
+  "https://dice-roll-git-admin-hardiks-projects-4c8d6fa8.vercel.app",
   "https://blabliblulife.com",
 ];
 
@@ -33,7 +34,11 @@ app.set("trust proxy", 1); // Trust first proxy (needed for secure cookies)
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow any Vercel deployment for this project
+    if (origin.includes('hardiks-projects-4c8d6fa8.vercel.app') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
