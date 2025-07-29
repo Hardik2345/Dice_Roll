@@ -1,55 +1,7 @@
-// api.tsx
+// api.tsx - Admin Dashboard API Service
 import axios, { AxiosInstance, AxiosError } from "axios";
 
-// Type definitions for API requests and responses
-interface SendOTPRequest {
-  name: string;
-  mobile: string;
-}
-
-interface SendOTPResponse {
-  success: boolean;
-  message: string;
-  debug?: string;
-  error?: string;
-  alreadyPlayed?: boolean;
-}
-
-interface VerifyOTPResponse {
-  success: boolean;
-  message: string;
-  error?: string;
-}
-
-interface RollDiceResponse {
-  success: boolean;
-  diceResult: number;
-  discountCode: string;
-  discount: string;
-  shopifyUrl: string | null;
-  isShopifyCode: boolean;
-  message: string;
-  error?: string;
-  alreadyPlayed?: boolean;
-}
-
-interface StatusResponse {
-  verified: boolean;
-  userInfo: {
-    name: string;
-    mobile: string;
-  } | null;
-}
-
-interface DiscountStatusResponse {
-  code: string;
-  usageCount?: number;
-  valid: boolean;
-  isShopifyCode: boolean;
-  message?: string;
-  error?: string;
-}
-
+// Type definitions for admin API responses
 interface HealthResponse {
   status: string;
   mongodb: string;
@@ -67,6 +19,7 @@ interface DashboardUser {
   rollDiceAt?: string;
   discountUsedAt?: string;
 }
+
 interface DashboardStats {
   entered: { count: number; users: DashboardUser[] };
   verified: { count: number; users: DashboardUser[] };
@@ -119,45 +72,18 @@ api.interceptors.response.use(
   }
 );
 
-// API service object with typed methods
+// API service object with only admin methods
 const apiService = {
-  sendOTP: (data: SendOTPRequest) =>
-    api.post<SendOTPResponse>("/api/send-otp", data),
-
-  verifyOTP: (otp: string) =>
-    api.post<VerifyOTPResponse>("/api/verify-otp", {
-      otp,
-    }),
-
-  rollDice: () => api.post<RollDiceResponse>("/api/roll-dice"),
-
-  getStatus: () => api.get<StatusResponse>("/api/status"),
-
-  checkDiscountStatus: (code: string) =>
-    api.get<DiscountStatusResponse>(`/api/discount-status/${code}`),
-
   getHealth: () => api.get<HealthResponse>("/api/health"),
 
   getDashboardStats: (startDate: string, endDate: string) =>
     api.get<DashboardStats>("/api/admin/dashboard-stats", {
       params: { startDate, endDate },
     }),
-
-  // Mark discount as used
-  markDiscountUsed: (discountCode: string) =>
-    api.post<{ success: boolean; message: string }>("/api/mark-discount-used", {
-      discountCode,
-    }),
 };
 
 // Export types for use in components
 export type {
-  SendOTPRequest,
-  SendOTPResponse,
-  VerifyOTPResponse,
-  RollDiceResponse,
-  StatusResponse,
-  DiscountStatusResponse,
   HealthResponse,
   CustomAxiosError,
   DashboardUser,

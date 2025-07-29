@@ -1,54 +1,17 @@
-import React from "react";
-import { GameProvider, useGameContext } from "./context/GameContext";
-import { LandingPage } from "./components/LandingPage";
-import { RollDiceScreen } from "./components/RollDiceScreen";
-import { PhoneNumberModal } from "./components/PhoneNumberModal";
-import { OtpVerificationModal } from "./components/OtpVerificationModal";
-import { CouponReveal } from "./components/CouponReveal";
-import { MyCouponsPage } from "./components/MyCouponsPage";
-
-function GameScreen() {
-  const { state } = useGameContext();
-
-  const renderCurrentScreen = () => {
-    switch (state.currentStep) {
-      case "landing":
-        return <LandingPage />;
-      case "phoneNumber":
-        return (
-          <>
-            <LandingPage />
-            <PhoneNumberModal />
-          </>
-        );
-      case "otpVerification":
-        return (
-          <>
-            <LandingPage />
-            <OtpVerificationModal />
-          </>
-        );
-      case "rollDice":
-        return <RollDiceScreen />;
-      case "couponReveal":
-        return <CouponReveal />;
-      case "myCoupons":
-        return <MyCouponsPage />;
-      default:
-        return <LandingPage />;
-    }
-  };
-
-  return <>{renderCurrentScreen()}</>;
-}
-
 function App() {
   return (
-    <GameProvider>
-      <div className="font-sans antialiased">
-        <GameScreen />
+    <div className="font-sans antialiased">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+            Application
+          </h1>
+          <p className="text-gray-600">
+            Please navigate to /admin/funnel for the dashboard.
+          </p>
+        </div>
       </div>
-    </GameProvider>
+    </div>
   );
 }
 
