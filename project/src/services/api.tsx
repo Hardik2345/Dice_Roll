@@ -32,6 +32,19 @@ interface CustomAxiosError extends AxiosError {
   friendlyMessage?: string;
 }
 
+// Admin model interface
+export interface Admin { id: string; username: string; email: string; role: string; lastLogin: string; }
+
+// Authentication methods
+export const login = (username: string, password: string) =>
+  api.post<{ success: boolean; admin: Admin }>("/api/admin/login", { username, password });
+
+export const logout = () =>
+  api.post<{ success: boolean }>("/api/admin/logout");
+
+export const getAdminStatus = () =>
+  api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status");
+
 // API URL configuration
 const API_URL: string = "https://dice-roll-admin.onrender.com";
 
@@ -86,6 +99,14 @@ const apiService = {
     api.post<{ success: boolean; message: string }>("/api/mark-discount-used", {
       discountCode,
     }),
+
+  // Admin authentication methods
+  login: (username: string, password: string) =>
+    api.post<{ success: boolean; admin: Admin }>("/api/admin/login", { username, password }),
+
+  logout: () => api.post<{ success: boolean }>("/api/admin/logout"),
+
+  getAdminStatus: () => api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status"),
 };
 
 // Export types for use in components
