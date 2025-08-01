@@ -79,6 +79,54 @@ const sessionMiddleware = session({
 
 app.use(sessionMiddleware);
 
+// Initialize Passport.js for authentication
+const passport = require('./config/passport');
+const { requireAuth, requireAdmin } = require('./middleware/auth');
+const Admin = require('./models/Admin');
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Admin authentication routes
+app.post('/api/admin/login', (req, res, next) => {
+  passport.authenticate('local', (err, admin, info) => {
+    if (err) return res.status(500).json({ error: 'Authentication error' });
+    if (!admin) return res.status(401).json({ error: info.message || 'Invalid credentials' });
+    req.logIn(admin, (err) => {
+      if (err) return res.status(500).json({ error: 'Login error' });
+      return res.json({ success: true, admin: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+        lastLogin: admin.lastLogin
+      }});
+    });
+  })(req, res, next);
+});
+
+app.post('/api/admin/logout', requireAuth, (req, res) => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ error: 'Logout error' });
+    req.session.destroy((err) => {
+      if (err) return res.status(500).json({ error: 'Session destruction error' });
+      res.json({ success: true });
+    });
+  });
+});
+
+app.get('/api/admin/status', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.json({ authenticated: true, admin: {
+      id: req.user._id,
+      username: req.user.username,
+      email: req.user.email,
+      role: req.user.role,
+      lastLogin: req.user.lastLogin
+    }});
+  }
+  return res.json({ authenticated: false });
+});
+
 // MongoDB connection
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/dice-roll-app")
@@ -622,7 +670,7 @@ app.get("/api/status", (req, res) => {
 });
 
 // Admin endpoint to get usage statistics
-app.get("/api/admin/stats", async (req, res) => {
+app.get("/api/admin/stats", requireAdmin, async (req, res) => {
   try {
     // TODO: Add proper authentication here for admin access
 
@@ -662,7 +710,7 @@ app.get("/api/admin/stats", async (req, res) => {
 });
 
 // Dashboard stats endpoint for admin
-app.get("/api/admin/dashboard-stats", async (req, res) => {
+app.get("/api/admin/dashboard-stats", requireAdmin, async (req, res) => {
   try {
     // TODO: Add authentication for admin access
     const { startDate, endDate } = req.query;
@@ -715,6 +763,7 @@ app.get("/api/admin/dashboard-stats", async (req, res) => {
 // Admin funnel stats endpoint with full cache-busting headers
 app.get(
   "/api/admin/funnel-stats",
+  requireAdmin,
   (req, res, next) => {
     res.set(
       "Cache-Control",
@@ -822,7 +871,7 @@ app.get("/api/test-dice-distribution", (req, res) => {
 });
 
 // Cleanup old/unused discounts (run as a scheduled job)
-app.post("/api/admin/cleanup-discounts", async (req, res) => {
+app.post("/api/admin/cleanup-discounts", requireAdmin, async (req, res) => {
   try {
     // TODO: Add proper authentication here for admin access
 
