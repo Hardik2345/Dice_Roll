@@ -107,6 +107,8 @@ const apiService = {
   logout: () => api.post<{ success: boolean }>("/api/admin/logout"),
 
   getAdminStatus: () => api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status"),
+  // Alias for backward compatibility
+  getStatus: () => api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status"),
 };
 
 // Export types for use in components

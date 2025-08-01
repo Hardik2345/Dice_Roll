@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import apiService from '../services/api';
+import { getAdminStatus } from '../services/api';
 
 interface RequireAuthProps {
   children: JSX.Element;
@@ -11,8 +11,7 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
   const location = useLocation();
 
   useEffect(() => {
-    apiService
-      .getStatus()
+    getAdminStatus()
       .then(res => {
         if (res.data.authenticated) {
           setAuth(true);
