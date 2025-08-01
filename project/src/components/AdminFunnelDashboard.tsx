@@ -70,6 +70,7 @@ const AdminFunnelDashboard: React.FC = () => {
     setError("");
     try {
       const res = await axios.get(`${API_BASE}/api/admin/funnel-stats`, {
+        withCredentials: true,
         params: { startDate, endDate, mobile: debouncedMobileSearch, t: Date.now() },
       });
       console.log(res.data);
@@ -98,8 +99,9 @@ const AdminFunnelDashboard: React.FC = () => {
   }, [fetchStats]);
 
   useEffect(() => {
-    const socket: Socket = io("https://dice-roll-admin.onrender.com", {
+    const socket: Socket = io(API_BASE, {
       transports: ["websocket"],
+      withCredentials: true,
     });
     socket.on("funnelEventUpdate", () => {
       fetchStats();
