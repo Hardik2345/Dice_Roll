@@ -293,7 +293,13 @@ const AdminFunnelDashboard: React.FC = () => {
       data = Object.entries(stats).map(([stage, val]) => ({ stage, count: val.count }));
       filename = "funnel_summary.csv";
     } else {
-      data = stats[activeTab].events;
+      // only include columns visible in the table: index, name, mobile, timestamp
+      data = stats[activeTab].events.map((e, idx) => ({
+        "#": idx + 1,
+        Name: e.name || "",
+        Mobile: e.mobile,
+        Timestamp: formatDate(e.timestamp),
+      }));
     }
     const csv = toCSV(data);
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -350,7 +356,7 @@ const AdminFunnelDashboard: React.FC = () => {
         <button
           onClick={exportCSV}
           className="bg-green-600 text-white px-4 py-2 rounded self-end"
-          disabled={!stats || (activeTab !== 'funnel' && !stats[activeTab]?.events.length)}
+          disabled={loading || !stats || (activeTab !== 'funnel' && !stats[activeTab]?.events.length)}
         >
           Export CSV
         </button>
