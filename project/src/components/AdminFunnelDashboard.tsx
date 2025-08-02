@@ -37,6 +37,16 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleString();
 }
 
+// Helper to convert array of objects into CSV string
+function toCSV<T>(items: T[]): string {
+  if (!items.length) return "";
+  const headers = Object.keys(items[0] as Record<string, any>);
+  const rows = items.map(item =>
+    headers.map(h => `"${(item as any)[h] || ""}"`).join(",")
+  );
+  return [headers.join(","), ...rows].join("\r\n");
+}
+
 interface FunnelEvent {
   _id: string;
   mobile: string;
@@ -274,6 +284,27 @@ const AdminFunnelDashboard: React.FC = () => {
     </table>
   );
 
+  // Function to export current tab data as CSV
+  const exportCSV = () => {
+    if (!stats) return;
+    let data: any[];
+    let filename = `${activeTab}.csv`;
+    if (activeTab === "funnel") {
+      data = Object.entries(stats).map(([stage, val]) => ({ stage, count: val.count }));
+      filename = "funnel_summary.csv";
+    } else {
+      data = stats[activeTab].events;
+    }
+    const csv = toCSV(data);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Funnel Dashboard</h1>
@@ -315,6 +346,13 @@ const AdminFunnelDashboard: React.FC = () => {
           disabled={loading}
         >
           {loading ? "Loading..." : "Refresh"}
+        </button>
+        <button
+          onClick={exportCSV}
+          className="bg-green-600 text-white px-4 py-2 rounded self-end"
+          disabled={!stats || (activeTab !== 'funnel' && !stats[activeTab]?.events.length)}
+        >
+          Export CSV
         </button>
       </div>
       <div className="flex gap-2 mb-4">
