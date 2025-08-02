@@ -22,7 +22,7 @@ ChartJS.register(
   Legend
 );
 
-const API_BASE = "https://dice-roll-admin.onrender.com";
+const API_BASE = "https://dice-roll-l2qy.onrender.com";
 
 const TABS = [
   { key: "entered", label: "Entered" },

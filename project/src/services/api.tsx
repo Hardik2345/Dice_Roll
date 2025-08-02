@@ -46,7 +46,7 @@ export const getAdminStatus = () =>
   api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status");
 
 // API URL configuration
-const API_URL: string = "https://dice-roll-admin.onrender.com";
+const API_URL: string = "https://dice-roll-l2qy.onrender.com";
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
