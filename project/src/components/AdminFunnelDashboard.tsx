@@ -355,7 +355,11 @@ const AdminFunnelDashboard: React.FC = () => {
         </button>
         <button
           onClick={exportCSV}
-          className="bg-green-600 text-white px-4 py-2 rounded self-end"
+          className={`bg-green-600 text-white px-4 py-2 rounded self-end ${
+            loading || !stats || (activeTab !== 'funnel' && !stats[activeTab]?.events.length)
+              ? 'opacity-50 cursor-not-allowed'
+              : 'hover:bg-green-700'
+          }`}
           disabled={loading || !stats || (activeTab !== 'funnel' && !stats[activeTab]?.events.length)}
         >
           Export CSV
