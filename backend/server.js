@@ -337,7 +337,7 @@ app.post("/api/send-otp", async (req, res) => {
     let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
     if (shopifyCustomer) {
       // If customer has redeemed tag, block
-      if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("FullCashBackEarned") || shopifyCustomer.tags.includes("redeemed"))) {
+      if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("FullCashBackEarned") || shopifyCustomer.tags.includes("redeemed") || shopifyCustomer.tags.includes("wallet-order-created"))) {
         return res.status(400).json({
           error: "Oops! It seems like you have already redeemed your discount.",
           alreadyRedeemed: true,
