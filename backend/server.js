@@ -283,18 +283,37 @@ async function createShopifyCustomer(phone, name, email) {
   }
 }
 
-// 3. Add tag to customer (REST Admin API)
-async function addTagToShopifyCustomer(customerId, tagsToAdd) {
-  // tagsToAdd: array of tags to add (e.g. ["redeemed"])
-  const tagsAsString = tagsToAdd.join(", ");
-  const payload = {
-    customer: {
-      id: customerId,
-      tags: tagsAsString,
-    },
-  };
+// 3. Add tag to customer (REST Admin API) - CORRECTED LOGIC
+async function addTagToShopifyCustomer(customerId, newTagsToAdd) {
   try {
-    const response = await axios.put(
+    // 1. FETCH the customer to get their current tags
+    const getCustomerResponse = await axios.get(
+      `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-07/customers/${customerId}.json`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const currentTags = getCustomerResponse.data.customer.tags || "";
+    // Split the string into an array, filter out any empty strings
+    const existingTagsArray = currentTags.split(',').map(tag => tag.trim()).filter(Boolean);
+
+    // 2. APPEND the new tags, avoiding duplicates
+    const combinedTags = new Set([...existingTagsArray, ...newTagsToAdd]);
+    const updatedTagsString = Array.from(combinedTags).join(', ');
+
+    // 3. UPDATE the customer with the full list of tags
+    const payload = {
+      customer: {
+        id: customerId,
+        tags: updatedTagsString,
+      },
+    };
+
+    const updateResponse = await axios.put(
       `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-07/customers/${customerId}.json`,
       payload,
       {
@@ -304,7 +323,9 @@ async function addTagToShopifyCustomer(customerId, tagsToAdd) {
         },
       }
     );
-    return response.data.customer;
+
+    return updateResponse.data.customer;
+
   } catch (err) {
     console.error(
       "Shopify REST tag update error:",
