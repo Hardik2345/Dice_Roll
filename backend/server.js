@@ -489,16 +489,17 @@ app.post("/api/roll-dice", async (req, res) => {
     }
     const { name, mobile, email } = req.session.userInfo;
     const shopifyCustomerId = req.session.shopifyCustomerId;
+    const mobileHash = await hashMobile(mobile);
     // Double-check if user has already played (local DB check)
-    const existingUsers = await User.find({});
-    for (let user of existingUsers) {
-      const isMatch = await bcrypt.compare(mobile, user.mobileHash);
-      if (isMatch) {
-        return res.status(400).json({
-          error: "You have already played this game!",
-          alreadyPlayed: true,
-        });
-      }
+    const existingUser = await User.find({
+      mobileHash,
+      name
+    });
+    if (existingUser) {
+      return res.status(400).json({
+        error: "You have already played this game!",
+        alreadyPlayed: true,
+      });
     }
     // Generate weighted dice result (1-6)
     const diceResult = getWeightedDiceResult();
@@ -528,8 +529,6 @@ app.post("/api/roll-dice", async (req, res) => {
         shopifyUrl: null,
       };
     }
-    // Hash mobile number for storage
-    const mobileHash = await hashMobile(mobile);
     // Save user record with Shopify details and EMAIL
     let user = await User.findOne({ name, mobileHash });
     if (!user) {
