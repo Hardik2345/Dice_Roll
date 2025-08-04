@@ -491,7 +491,7 @@ app.post("/api/roll-dice", async (req, res) => {
     const shopifyCustomerId = req.session.shopifyCustomerId;
     const mobileHash = await hashMobile(mobile);
     // Double-check if user has already played (local DB check)
-    const existingUser = await User.find({
+    const existingUser = await User.findOne({
       mobileHash,
       name
     });
