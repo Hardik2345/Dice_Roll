@@ -554,7 +554,9 @@ app.post("/api/roll-dice", async (req, res) => {
     // Add the 'redeemed' tag to the Shopify customer (REST Admin API)
     if (shopifyCustomerId) {
       try {
+        console.log("Adding 'redeemed' tag to Shopify customer");
         await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
+        console.log("Shopify customer tagged as redeemed");
 
         // Use actual email for Flits integration
         const flits = {
