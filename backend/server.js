@@ -356,13 +356,13 @@ app.post("/api/send-otp", async (req, res) => {
 
     // Shopify: Check if customer exists by phone
     let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
+    let hasRedeemedBefore = false;
+    
     if (shopifyCustomer) {
-      // If customer has redeemed tag, block
+      // Check if customer has redeemed tags but don't block them
       if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("FullCashBackEarned") || shopifyCustomer.tags.includes("redeemed") || shopifyCustomer.tags.includes("wallet-order-created"))) {
-        return res.status(400).json({
-          error: "Oops! It seems like you have already redeemed your discount.",
-          alreadyRedeemed: true,
-        });
+        hasRedeemedBefore = true;
+        console.log("Customer has already redeemed before, but allowing to play");
       }
       // Store Shopify customerId in session (REST API returns numeric ID)
       req.session.shopifyCustomerId = shopifyCustomer.id;
@@ -375,11 +375,12 @@ app.post("/api/send-otp", async (req, res) => {
     // Generate random OTP
     const otp = generateOTP();
 
-    // Store user info (including email), OTP and OTP generation time in session
+    // Store user info (including email), OTP, OTP generation time, and redemption status in session
     req.session.userInfo = { name, mobile, email };
     req.session.otp = otp;
     req.session.generateOTPAt = new Date();
     req.session.playedAt = new Date();
+    req.session.hasRedeemedBefore = hasRedeemedBefore;
 
     // Send OTP via SMS gateway
     try {
@@ -489,6 +490,7 @@ app.post("/api/roll-dice", async (req, res) => {
     }
     const { name, mobile, email } = req.session.userInfo;
     const shopifyCustomerId = req.session.shopifyCustomerId;
+    const hasRedeemedBefore = req.session.hasRedeemedBefore || false;
     const mobileHash = await hashMobile(mobile);
     // Double-check if user has already played (local DB check)
     const existingUser = await User.findOne({
@@ -579,27 +581,33 @@ app.post("/api/roll-dice", async (req, res) => {
         await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
         console.log("Shopify customer tagged as redeemed");
 
-        // Use actual email for Flits integration
-        const flits = {
-          customer_email: email, // Use the actual email provided by user
-          credit_details: {
-            credit_value: 399,
-            comment_text: `Rewarding the user 399 in his wallet`,
-          },
-        };
-
-        const ress = await axios.post(
-          "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
-          flits,
-          {
-            headers: {
-              "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
+        // Only call Flits API if customer hasn't redeemed before
+        if (!hasRedeemedBefore) {
+          console.log("Customer hasn't redeemed before, calling Flits API");
+          // Use actual email for Flits integration
+          const flits = {
+            customer_email: email, // Use the actual email provided by user
+            credit_details: {
+              credit_value: 399,
+              comment_text: `Rewarding the user 399 in his wallet`,
             },
-          }
-        );
-        console.log("Flits response recieved:", ress);
+          };
+
+          const ress = await axios.post(
+            "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
+            flits,
+            {
+              headers: {
+                "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
+              },
+            }
+          );
+          console.log("Flits response recieved:", ress);
+        } else {
+          console.log("Customer has already redeemed before, skipping Flits API call");
+        }
       } catch (err) {
-        console.error("Failed to add redeemed tag to Shopify customer:", err);
+        console.error("Failed to add redeemed tag to Shopify customer or call Flits API:", err);
       }
     }
     // Clear session
