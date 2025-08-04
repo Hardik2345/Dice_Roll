@@ -495,6 +495,7 @@ app.post("/api/roll-dice", async (req, res) => {
       mobileHash,
       name
     });
+    console.log("Checking existing users:", existingUser);
     if (existingUser) {
       return res.status(400).json({
         error: "You have already played this game!",
