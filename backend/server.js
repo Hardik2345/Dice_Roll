@@ -12,7 +12,7 @@ require("dotenv").config();
 const User = require("./models/User");
 const FunnelEvent = require("./models/FunnelEvent");
 const CustomerTag = require("./models/CustomerTag");
-const ShopifyService = require("./shopifyService");
+// const ShopifyService = require("./shopifyService");
 
 const allowedOrigins = [
   "https://dice-roll-5wsv-git-localdev-hardiks-projects-4c8d6fa8.vercel.app",
@@ -23,7 +23,7 @@ const allowedOrigins = [
 ];
 
 const app = express();
-const shopifyService = new ShopifyService();
+// const shopifyService = new ShopifyService();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -494,8 +494,8 @@ app.post("/api/roll-dice", async (req, res) => {
         "Shopify discount created successfully:",
         shopifyDiscount.code
       );
-    } catch (shopifyError) {
-      console.error("Shopify integration error:", shopifyError);
+    } catch (error) {
+      console.error("Shopify integration error:", error);
       useShopify = false;
       // Fallback to local discount code if Shopify fails
       const discountInfo = DISCOUNT_CODES[diceResult];
