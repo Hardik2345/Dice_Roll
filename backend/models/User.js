@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  marketPlace:{
+    type:Boolean,
+    required: true,
+    default: false,
+  },
   diceResult: {
     type: Number,
     required: true,

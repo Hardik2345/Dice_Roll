@@ -370,6 +370,7 @@ app.post("/api/send-otp", async (req, res) => {
       // Customer does not exist, create with provided email
       const created = await createShopifyCustomer(mobile, name, email);
       req.session.shopifyCustomerId = created.id;
+      req.session.marketPlace = true; // Set marketPlace to true for new customers
     }
 
     // Generate random OTP
@@ -491,6 +492,7 @@ app.post("/api/roll-dice", async (req, res) => {
     const { name, mobile, email } = req.session.userInfo;
     const shopifyCustomerId = req.session.shopifyCustomerId;
     const hasRedeemedBefore = req.session.hasRedeemedBefore || false;
+    const marketPlace = req.session.marketPlace || false;
     const mobileHash = await hashMobile(mobile);
     // Double-check if user has already played (local DB check)
     const existingUser = await User.findOne({
@@ -541,6 +543,7 @@ app.post("/api/roll-dice", async (req, res) => {
         email,
         discountCode: shopifyDiscount.code,
         diceResult,
+        marketPlace,
         shopifyPriceRuleId: shopifyDiscount.priceRuleId,
         shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
         isShopifyCode: useShopify,
