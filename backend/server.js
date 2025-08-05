@@ -828,42 +828,70 @@ app.get(
         "dice_rolled",
         "discount_used",
       ];
+      
       const stats = {};
-      const mobileFilter = mobile
-        ? { mobile: { $regex: mobile, $options: "i" } }
-        : {};
+      const baseMatch = {
+        timestamp: { $gte: start, $lte: end }
+      };
+      
+      // Add mobile filter if provided
+      if (mobile) {
+        baseMatch.mobile = { $regex: mobile, $options: "i" };
+      }
+
+      // Use aggregation pipeline for each event type
       for (const eventType of eventTypes) {
-        const events = await FunnelEvent.find({
-          eventType,
-          timestamp: { $gte: start, $lte: end },
-          ...mobileFilter,
-        }).sort({ timestamp: -1 });
-        // Add discountCode to each event if available from user
-        const eventsWithMobile = await Promise.all(
-          events.map(async (event) => {
-            let eventObj = event.toObject();
-            // If event has userId, fetch the user and attach unhashed mobile for admin
-            if (event.userId) {
-              const user = await User.findById(event.userId);
-              if (user && user.mobile) {
-                eventObj.unhashedMobile = user.mobile;
+        const pipeline = [
+          {
+            $match: {
+              ...baseMatch,
+              eventType: eventType
+            }
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "user"
+            }
+          },
+          {
+            $addFields: {
+              discountCode: {
+                $cond: {
+                  if: { $gt: [{ $size: "$user" }, 0] },
+                  then: { $arrayElemAt: ["$user.discountCode", 0] },
+                  else: "$discountCode"
+                }
+              },
+              unhashedMobile: {
+                $cond: {
+                  if: { $gt: [{ $size: "$user" }, 0] },
+                  then: { $arrayElemAt: ["$user.mobile", 0] },
+                  else: null
+                }
               }
             }
-            // Add discountCode if missing
-            if (!eventObj.discountCode && event.userId) {
-              const user = await User.findById(event.userId);
-              if (user && user.discountCode) {
-                eventObj.discountCode = user.discountCode;
-              }
+          },
+          {
+            $project: {
+              user: 0 // Remove the joined user array to keep response clean
             }
-            return eventObj;
-          })
-        );
+          },
+          {
+            $sort: { timestamp: -1 }
+          }
+        ];
+
+        const events = await FunnelEvent.aggregate(pipeline);
+        
         stats[eventType] = {
-          count: eventsWithMobile.length,
-          events: eventsWithMobile,
+          count: events.length,
+          events: events,
         };
       }
+      
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch funnel stats" });
