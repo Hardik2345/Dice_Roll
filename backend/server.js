@@ -6,6 +6,7 @@ const session = require("express-session");
 const axios = require("axios");
 const http = require("http");
 const MongoStore = require("connect-mongo");
+const crypto=require("crypto")
 const { Server } = require("socket.io");
 require("dotenv").config();
 
@@ -148,6 +149,10 @@ const DISCOUNT_CODES = {
 const hashMobile = async (mobile) => {
   return await bcrypt.hash(mobile, 10);
 };
+
+function sha256(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
 
 // Helper function to generate random OTP
 function generateOTP() {
@@ -493,19 +498,43 @@ app.post("/api/roll-dice", async (req, res) => {
     const shopifyCustomerId = req.session.shopifyCustomerId;
     const hasRedeemedBefore = req.session.hasRedeemedBefore || false;
     const marketPlace = req.session.marketPlace || false;
-    const mobileHash = await hashMobile(mobile);
-    // Double-check if user has already played (local DB check)
-    const existingUser = await User.findOne({
-      mobileHash,
-      name
-    });
-    console.log("Checking existing users:", existingUser);
+    const mobileHash=hashMobile(mobile);
+    const mobileIdentifier = sha256(mobile);
+
+    let existingUser = null;
+
+    // 2. Try the fast, new method first
+    existingUser = await User.findOne({ mobileIdentifier });
+
+    // 3. If not found, fall back to the old, slower method
+    if (!existingUser) {
+      console.log("User not found with new identifier. Trying legacy check...");
+      const potentialUsers = await User.find({ name });
+
+      for (const user of potentialUsers) {
+        const isMatch = await bcrypt.compare(mobile, user.mobileHash);
+        if (isMatch) {
+          existingUser = user; // Found the user via the old method
+          
+          // 4. CRITICAL: Upgrade the user record for future checks
+          console.log(`Migrating user ${user._id} to new identifier system.`);
+          await User.updateOne(
+            { _id: user._id },
+            { $set: { mobileIdentifier: mobileIdentifier } }
+          );
+          break; // Exit the loop once a match is found
+        }
+      }
+    }
+
+    // 5. Final Check: See if a user was found by either method
     if (existingUser) {
       return res.status(400).json({
         error: "You have already played this game!",
         alreadyPlayed: true,
       });
     }
+
     // Generate weighted dice result (1-6)
     const diceResult = getWeightedDiceResult();
     // Create discount in Shopify (rest of the code remains the same)
@@ -534,11 +563,32 @@ app.post("/api/roll-dice", async (req, res) => {
         shopifyUrl: null,
       };
     }
-    // Save user record with Shopify details and EMAIL
-    let user = await User.findOne({ name, mobileHash });
+
+    let user = null;
+
+    // 2. First, try finding the user with the new, fast identifier
+    user = await User.findOne({ mobileIdentifier });
+
+    // 3. If not found, fall back to the legacy bcrypt check
+    if (!user) {
+      const potentialUsers = await User.find({ name });
+      for (const potentialUser of potentialUsers) {
+        const isMatch = await bcrypt.compare(mobile, potentialUser.mobileHash);
+        if (isMatch) {
+          user = potentialUser; // Found the user!
+
+          // IMPORTANT: Upgrade the user's record on-the-fly
+          user.mobileIdentifier = mobileIdentifier;
+          // Note: We'll save this change in the 'else' block below.
+          
+          break;
+        }
+      }
+    }
     if (!user) {
       user = new User({
         mobileHash,
+        mobileIdentifier,
         name,
         email,
         discountCode: shopifyDiscount.code,

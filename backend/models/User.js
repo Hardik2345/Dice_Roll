@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  mobileIdentifier:{
+    type:String,
+  },
   name: {
     type: String,
     required: true,
