@@ -861,88 +861,60 @@ app.get(
   },
   async (req, res) => {
     try {
-      const { startDate, endDate, mobile } = req.query;
+      const { startDate, endDate, mobile, eventType, page = "1", limit = "50" } = req.query;
+
       if (!startDate || !endDate) {
-        return res
-          .status(400)
-          .json({ error: "startDate and endDate are required" });
+        return res.status(400).json({ error: "startDate and endDate are required" });
       }
+      if (!eventType) {
+        return res.status(400).json({ error: "eventType is now required" });
+      }
+
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
-      const eventTypes = [
-        "entered",
-        "otp_sent",
-        "otp_verified",
-        "dice_rolled",
-        "discount_used",
-      ];
-      
-      const stats = {};
-      const baseMatch = {
-        timestamp: { $gte: start, $lte: end }
-      };
-      
-      // Add mobile filter if provided
-      if (mobile) {
-        baseMatch.mobile = { $regex: mobile, $options: "i" };
+      const eventTypes = ["entered", "otp_sent", "otp_verified", "dice_rolled", "discount_used"]; 
+      if (!eventTypes.includes(eventType)) {
+        return res.status(400).json({ error: "Invalid eventType" });
       }
 
-      // Use aggregation pipeline for each event type
-      for (const eventType of eventTypes) {
-        const pipeline = [
-          {
-            $match: {
-              ...baseMatch,
-              eventType: eventType
-            }
-          },
-          {
-            $lookup: {
-              from: "users",
-              localField: "userId",
-              foreignField: "_id",
-              as: "user"
-            }
-          },
-          {
-            $addFields: {
-              discountCode: {
-                $cond: {
-                  if: { $gt: [{ $size: "$user" }, 0] },
-                  then: { $arrayElemAt: ["$user.discountCode", 0] },
-                  else: "$discountCode"
-                }
-              },
-              unhashedMobile: {
-                $cond: {
-                  if: { $gt: [{ $size: "$user" }, 0] },
-                  then: { $arrayElemAt: ["$user.mobile", 0] },
-                  else: null
-                }
-              }
-            }
-          },
-          {
-            $project: {
-              user: 0 // Remove the joined user array to keep response clean
-            }
-          },
-          {
-            $sort: { timestamp: -1 }
+      const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+      const perPageRaw = parseInt(limit, 10) || 50;
+      const perPage = Math.min(Math.max(perPageRaw, 1), 200);
+      const skip = (pageNum - 1) * perPage;
+
+      const match = { eventType, timestamp: { $gte: start, $lte: end } };
+      if (mobile) match.mobile = { $regex: mobile, $options: "i" };
+
+      const pipeline = [
+        { $match: match },
+        { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+        { $addFields: {
+            discountCode: { $cond: { if: { $gt: [{ $size: "$user" }, 0] }, then: { $arrayElemAt: ["$user.discountCode", 0] }, else: "$discountCode" } },
+            unhashedMobile: { $cond: { if: { $gt: [{ $size: "$user" }, 0] }, then: { $arrayElemAt: ["$user.mobile", 0] }, else: null } }
           }
-        ];
+        },
+        { $project: { user: 0 } },
+        { $sort: { timestamp: -1 } },
+        { $facet: { metadata: [{ $count: "total" }], events: [{ $skip: skip }, { $limit: perPage }] } }
+      ];
 
-        const events = await FunnelEvent.aggregate(pipeline);
-        
-        stats[eventType] = {
-          count: events.length,
-          events: events,
-        };
-      }
-      
-      res.json(stats);
+      const agg = await FunnelEvent.aggregate(pipeline);
+      const meta = agg[0].metadata[0] || { total: 0 };
+      const total = meta.total;
+      const totalPages = total === 0 ? 1 : Math.ceil(total / perPage);
+
+      return res.json({
+        eventType,
+        count: total,
+        page: pageNum,
+        totalPages,
+        limit: perPage,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1,
+        events: agg[0].events
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch funnel stats" });
     }
