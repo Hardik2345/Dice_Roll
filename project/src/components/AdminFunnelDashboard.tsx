@@ -418,40 +418,42 @@ const AdminFunnelDashboard: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Funnel Dashboard</h1>
-      <div className="flex flex-wrap gap-4 mb-4 items-end">
-        <div>
-          <label className="block text-sm">Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border rounded px-2 py-1" max={endDate} />
-        </div>
-        <div>
-          <label className="block text-sm">End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border rounded px-2 py-1" min={startDate} max={new Date().toISOString().slice(0,10)} />
-        </div>
-        <div>
-          <label className="block text-sm">Search Mobile</label>
-            <input type="text" value={mobileSearch} onChange={e => setMobileSearch(e.target.value)} placeholder="Enter mobile number" className="border rounded px-2 py-1" />
-        </div>
-        <button
-          onClick={() => { fetchCounts(); if (activeTab !== 'funnel') fetchPage(activeTab as EventType, pageByEvent[activeTab as EventType]); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          disabled={loadingCounts || loadingEvents}
-        >{(loadingCounts || loadingEvents) ? 'Loading...' : 'Refresh'}</button>
-        <button
-          onClick={exportCSV}
-          className={`bg-green-600 text-white px-4 py-2 rounded ${ (activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
-          disabled={(activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents}
-        >Export CSV</button>
-      </div>
-
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {TABS.map(tab => (
+      {/* Sticky Header Container */}
+      <div className="sticky top-0 z-30 -mx-6 px-6 pt-4 pb-4 mb-4 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b shadow-sm">
+        <h1 className="text-2xl font-bold mb-4">Admin Funnel Dashboard</h1>
+        <div className="flex flex-wrap gap-4 mb-4 items-end">
+          <div>
+            <label className="block text-sm">Start Date</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border rounded px-2 py-1" max={endDate} />
+          </div>
+          <div>
+            <label className="block text-sm">End Date</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border rounded px-2 py-1" min={startDate} max={new Date().toISOString().slice(0,10)} />
+          </div>
+          <div>
+            <label className="block text-sm">Search Mobile</label>
+              <input type="text" value={mobileSearch} onChange={e => setMobileSearch(e.target.value)} placeholder="Enter mobile number" className="border rounded px-2 py-1" />
+          </div>
           <button
-            key={tab.key}
-            className={`px-4 py-2 rounded-t ${activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-            onClick={() => setActiveTab(tab.key)}
-          >{tab.label}</button>
-        ))}
+            onClick={() => { fetchCounts(); if (activeTab !== 'funnel') fetchPage(activeTab as EventType, pageByEvent[activeTab as EventType]); }}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            disabled={loadingCounts || loadingEvents}
+          >{(loadingCounts || loadingEvents) ? 'Loading...' : 'Refresh'}</button>
+          <button
+            onClick={exportCSV}
+            className={`bg-green-600 text-white px-4 py-2 rounded ${ (activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
+            disabled={(activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents}
+          >Export CSV</button>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              className={`px-4 py-2 rounded-t ${activeTab === tab.key ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+              onClick={() => setActiveTab(tab.key)}
+            >{tab.label}</button>
+          ))}
+        </div>
       </div>
 
       {error && <div className="text-red-600 mb-2">{error}</div>}
