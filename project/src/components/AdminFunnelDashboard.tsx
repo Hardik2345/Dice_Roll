@@ -205,15 +205,18 @@ const AdminFunnelDashboard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, debouncedMobileSearch]);
 
-  // On tab switch: if event tab and no cached page, fetch it
+  // On tab switch: fetch if no cache OR cached limit mismatches current global pageSize
   useEffect(() => {
     if (activeTab !== 'funnel') {
       const et = activeTab as EventType;
-      if (!pages[et]) {
-        fetchPage(et, pageByEvent[et]);
+      const meta = pages[et];
+      if (!meta || meta.limit !== pageSize) {
+        // Always reset to page 1 when limit changes for consistency
+        setPageByEvent(prev => ({ ...prev, [et]: 1 }));
+        fetchPage(et, 1);
       }
     }
-  }, [activeTab, fetchPage, pages, pageByEvent]);
+  }, [activeTab, fetchPage, pages, pageSize]);
 
   // Socket updates: refresh counts & current page
   useEffect(() => {
@@ -237,12 +240,27 @@ const AdminFunnelDashboard: React.FC = () => {
   };
 
   const changePageSize = (newSize: number) => {
+    if (newSize === pageSize) return; // no change
+    // Update global size first
     setPageSize(newSize);
-    // refetch current tab page starting at 1
+    // Invalidate all cached pages so each tab will lazy-reload with new size
+    setPages({
+      entered: undefined,
+      otp_sent: undefined,
+      otp_verified: undefined,
+      dice_rolled: undefined,
+    });
+    // Reset all page indices to 1 (simplest consistency model)
+    setPageByEvent({
+      entered: 1,
+      otp_sent: 1,
+      otp_verified: 1,
+      dice_rolled: 1,
+    });
+    // Immediately refetch only the active tab (others lazy on first view)
     if (activeTab !== 'funnel') {
       const et = activeTab as EventType;
-      setPageByEvent(prev => ({ ...prev, [et]: 1 }));
-      fetchPage(et, 1, newSize);
+      fetchPage(et, 1, newSize); // override to avoid stale closure
     }
   };
 
