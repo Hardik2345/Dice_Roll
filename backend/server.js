@@ -498,7 +498,7 @@ app.post("/api/roll-dice", async (req, res) => {
     const shopifyCustomerId = req.session.shopifyCustomerId;
     const hasRedeemedBefore = req.session.hasRedeemedBefore || false;
     const marketPlace = req.session.marketPlace || false;
-    const mobileHash=hashMobile(mobile);
+    const mobileHash=await hashMobile(mobile);
     const mobileIdentifier = sha256(mobile);
 
     let existingUser = null;
