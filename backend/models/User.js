@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  lastCreditAt: { type: Date }
 });
 
 // Index for faster queries

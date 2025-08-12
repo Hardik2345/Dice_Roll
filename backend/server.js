@@ -362,12 +362,32 @@ app.post("/api/send-otp", async (req, res) => {
     // Shopify: Check if customer exists by phone
     let shopifyCustomer = await findShopifyCustomerByPhone(mobile);
     let hasRedeemedBefore = false;
-    
+    let tag;
+
     if (shopifyCustomer) {
+      const hasNoTag=!shopifyCustomer.tags.includes("credited-once") && !shopifyCustomer.tags.includes("credited-twice") && !shopifyCustomer.tags.includes("credited-thrice");
+      const hasExactlyOnce =shopifyCustomer.tags.includes("credited-once") && !(shopifyCustomer.tags.includes("credited-twice") || shopifyCustomer.tags.includes("credited-thrice"));
+      const hasExactlyTwice =shopifyCustomer.tags.includes("credited-twice") && !(shopifyCustomer.tags.includes("credited-thrice"));
+      const hasExactlyThrice =shopifyCustomer.tags.includes("credited-thrice")
       // Check if customer has redeemed tags but don't block them
-      if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("FullCashBackEarned") || shopifyCustomer.tags.includes("redeemed") || shopifyCustomer.tags.includes("wallet-order-created"))) {
-        hasRedeemedBefore = true;
+      if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("wallet-order-created") || hasExactlyOnce || hasExactlyTwice || hasExactlyThrice || hasNoTag)) {
         console.log("Customer has already redeemed before, but allowing to play");
+        if(hasNoTag){
+          hasRedeemedBefore = false;
+          tag="credited-once"
+        }
+        if(hasExactlyOnce){
+          hasRedeemedBefore = false; // Eligible for credit if they have redeemed exactly once
+          tag="credited-twice"
+        }
+        if (hasExactlyTwice) {
+          hasRedeemedBefore = false; // Eligible for credit if they have redeemed exactly twice
+          tag="credited-thrice"
+        }
+        if(hasExactlyThrice){
+          hasRedeemedBefore = true;
+          console.log("Customer has already redeemed before, but allowing to play");
+        }
       }
       // Store Shopify customerId in session (REST API returns numeric ID)
       req.session.shopifyCustomerId = shopifyCustomer.id;
@@ -387,6 +407,7 @@ app.post("/api/send-otp", async (req, res) => {
     req.session.generateOTPAt = new Date();
     req.session.playedAt = new Date();
     req.session.hasRedeemedBefore = hasRedeemedBefore;
+    req.session.tag=tag
 
     // Send OTP via SMS gateway
     try {
@@ -501,40 +522,6 @@ app.post("/api/roll-dice", async (req, res) => {
     const mobileHash=await hashMobile(mobile);
     const mobileIdentifier = sha256(mobile);
 
-    let existingUser = null;
-
-    // 2. Try the fast, new method first
-    existingUser = await User.findOne({ mobileIdentifier });
-
-    // 3. If not found, fall back to the old, slower method
-    if (!existingUser) {
-      console.log("User not found with new identifier. Trying legacy check...");
-      const potentialUsers = await User.find({ name });
-
-      for (const user of potentialUsers) {
-        const isMatch = await bcrypt.compare(mobile, user.mobileHash);
-        if (isMatch) {
-          existingUser = user; // Found the user via the old method
-          
-          // 4. CRITICAL: Upgrade the user record for future checks
-          console.log(`Migrating user ${user._id} to new identifier system.`);
-          await User.updateOne(
-            { _id: user._id },
-            { $set: { mobileIdentifier: mobileIdentifier } }
-          );
-          break; // Exit the loop once a match is found
-        }
-      }
-    }
-
-    // 5. Final Check: See if a user was found by either method
-    if (existingUser) {
-      return res.status(400).json({
-        error: "You have already played this game!",
-        alreadyPlayed: true,
-      });
-    }
-
     // Generate weighted dice result (1-6)
     const diceResult = getWeightedDiceResult();
     // Create discount in Shopify (rest of the code remains the same)
@@ -631,11 +618,21 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         console.log("Adding 'redeemed' tag to Shopify customer");
-        await addTagToShopifyCustomer(shopifyCustomerId, ["redeemed"]);
+        await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
         console.log("Shopify customer tagged as redeemed");
 
+       const redeemedWithin = async (mobileIdentifier, windowMs) => {
+       const user = await User.findOne({ mobileIdentifier })
+          .select('lastCreditAt')
+          .lean();
+          if (!user?.lastCreditAt) return false;
+          return (Date.now() - new Date(user.lastCreditAt).getTime()) < windowMs;
+       };
+
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);
         // Only call Flits API if customer hasn't redeemed before
-        if (!hasRedeemedBefore) {
+        if (!hasRedeemedBefore && !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
           // Use actual email for Flits integration
           const flits = {
@@ -655,6 +652,7 @@ app.post("/api/roll-dice", async (req, res) => {
               },
             }
           );
+          await User.updateOne({ mobileIdentifier }, { $set: { lastCreditAt: new Date() } });
           console.log("Flits response recieved:", ress);
         } else {
           console.log("Customer has already redeemed before, skipping Flits API call");
@@ -679,6 +677,27 @@ app.post("/api/roll-dice", async (req, res) => {
     res.status(500).json({ error: "Failed to process dice roll" });
   }
 });
+
+app.post("/api/update-credit-time", async (req, res) => {
+  try {
+    const { mobileIdentifier } = req.body;
+    console.log("Updating credit time for", mobileIdentifier);
+
+    const user = await User.findOne({ mobileIdentifier });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.lastCreditAt = new Date();
+    await user.save();
+
+    res.json({ success: true, message: "Credit time updated" });
+  } catch (error) {
+    console.error("Failed to update credit time:", error);
+    res.status(500).json({ error: "Failed to update credit time" });
+  }
+});
+
 // Mark discount as used endpoint
 app.post("/api/mark-discount-used", async (req, res) => {
   try {
