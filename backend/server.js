@@ -648,7 +648,7 @@ app.post("/api/roll-dice", async (req, res) => {
       try {
         console.log("Adding tag to Shopify customer");
         if(req.session.tag){
-          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+          await addTagToShopifyCustomer(shopifyCustomerId, ["credited-once"]);
         }
         console.log("Shopify customer tagged");
 
