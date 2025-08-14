@@ -413,7 +413,7 @@ app.post("/api/send-otp", async (req, res) => {
           hasRedeemedBefore = true;
           console.log("Customer has already redeemed before, but allowing to play");
         }
-        if(shopifyCustomer.tagsSet.includes("wallet-order-created")){
+        if(tagsSet.has("wallet-order-created")){
           hasRedeemedBefore = true;
           console.log("Customer has already redeemed before, but allowing to play");
         }
@@ -647,7 +647,8 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         console.log("Adding tag to Shopify customer");
-        if(req.session.tag){
+        const VALID_TAGS = ["credited-once","credited-twice","credited-thrice"];
+        if(req.session.tag && VALID_TAGS.includes(req.session.tag)){
           await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
         }
         console.log("Shopify customer tagged");
