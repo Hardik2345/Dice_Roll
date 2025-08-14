@@ -365,10 +365,35 @@ app.post("/api/send-otp", async (req, res) => {
     let tag;
 
     if (shopifyCustomer) {
-      const hasNoTag=!shopifyCustomer.tags.includes("credited-once") && !shopifyCustomer.tags.includes("credited-twice") && !shopifyCustomer.tags.includes("credited-thrice");
-      const hasExactlyOnce =shopifyCustomer.tags.includes("credited-once") && !(shopifyCustomer.tags.includes("credited-twice") || shopifyCustomer.tags.includes("credited-thrice"));
-      const hasExactlyTwice =shopifyCustomer.tags.includes("credited-twice") && !(shopifyCustomer.tags.includes("credited-thrice"));
-      const hasExactlyThrice =shopifyCustomer.tags.includes("credited-thrice")
+      function getTagSet(raw) {
+        const arr = Array.isArray(raw)
+          ? raw
+          : String(raw || '')
+              .split(',')
+              .map(t => t.trim())
+              .filter(Boolean);
+        // use lowercase for comparisons if you want case-insensitive logic
+        return new Set(arr.map(t => t.toLowerCase()));
+      }
+
+      // usage:
+      const tagsSet = getTagSet(shopifyCustomer.tags);
+      const hasNoTag =
+        !tagsSet.has('credited-once') &&
+        !tagsSet.has('credited-twice') &&
+        !tagsSet.has('credited-thrice');
+
+      const hasExactlyOnce =
+        tagsSet.has('credited-once') &&
+        !tagsSet.has('credited-twice') &&
+        !tagsSet.has('credited-thrice');
+
+      const hasExactlyTwice =
+        tagsSet.has('credited-twice') &&
+        !tagsSet.has('credited-thrice');
+
+      const hasExactlyThrice = tagsSet.has('credited-thrice');
+
       // Check if customer has redeemed tags but don't block them
       if (shopifyCustomer.tags && (shopifyCustomer.tags.includes("wallet-order-created") || hasExactlyOnce || hasExactlyTwice || hasExactlyThrice || hasNoTag)) {
         console.log("Customer has already redeemed before, but allowing to play");
