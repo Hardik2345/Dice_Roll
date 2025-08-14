@@ -669,8 +669,8 @@ app.post("/api/roll-dice", async (req, res) => {
           const flits = {
             customer_email: email, // Use the actual email provided by user
             credit_details: {
-              credit_value: 399,
-              comment_text: `Rewarding the user 399 in his wallet`,
+              credit_value: 449,
+              comment_text: `Rewarding the user 449 in his wallet`,
             },
           };
 
