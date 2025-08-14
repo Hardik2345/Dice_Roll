@@ -650,11 +650,8 @@ app.post("/api/roll-dice", async (req, res) => {
         if(!req.session.tag && req.session.marketPlace){
           await addTagToShopifyCustomer(shopifyCustomerId, ["credited-once"]);
         }
-        else if(req.session.tag && !req.session.marketPlace){
-          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-        }
         else{
-          await addTagToShopifyCustomer(shopifyCustomerId, ["credited-once"]);
+          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
         }
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
