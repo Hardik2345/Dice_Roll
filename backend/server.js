@@ -395,7 +395,7 @@ app.post("/api/send-otp", async (req, res) => {
       const hasExactlyThrice = tagsSet.has('credited-thrice');
 
       // Check if customer has redeemed tags but don't block them
-      if (shopifyCustomer.tags && (shopifyCustomer.tagsSet.includes("wallet-order-created") || hasExactlyOnce || hasExactlyTwice || hasExactlyThrice || hasNoTag)) {
+      if (shopifyCustomer.tags && (tagsSet.has("wallet-order-created") || hasExactlyOnce || hasExactlyTwice || hasExactlyThrice || hasNoTag)) {
         console.log("Customer has already redeemed before, but allowing to play");
         if(hasNoTag){
           hasRedeemedBefore = false;
@@ -646,9 +646,11 @@ app.post("/api/roll-dice", async (req, res) => {
     // Add the 'redeemed' tag to the Shopify customer (REST Admin API)
     if (shopifyCustomerId) {
       try {
-        console.log("Adding 'redeemed' tag to Shopify customer");
-        await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-        console.log("Shopify customer tagged as redeemed");
+        console.log("Adding tag to Shopify customer");
+        if(req.session.tag){
+          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+        }
+        console.log("Shopify customer tagged");
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
        const user = await User.findOne({ mobileIdentifier })
