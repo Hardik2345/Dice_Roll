@@ -648,9 +648,6 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         console.log("Adding tag to Shopify customer");
-        if(req.session.tag){
-          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-        }   
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
        const user = await User.findOne({ mobileIdentifier })
@@ -683,6 +680,10 @@ app.post("/api/roll-dice", async (req, res) => {
               },
             }
           );
+          if(req.session.tag){
+            await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+          }   
+
           await User.updateOne({ mobileIdentifier }, { $set: { lastCreditAt: new Date() } });
           console.log("Flits response recieved:", ress);
         } else {
