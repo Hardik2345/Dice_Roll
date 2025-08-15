@@ -653,17 +653,17 @@ app.post("/api/roll-dice", async (req, res) => {
         }   
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
-       const user = await User.findOne({ mobileIdentifier })
+        const user = await User.findOne({ mobileIdentifier })
           .select('lastCreditAt')
           .lean();
-          if (!user?.lastCreditAt) return false;
-          return (Date.now() - new Date(user.lastCreditAt).getTime()) < windowMs;
+        if (!user?.lastCreditAt) return false;
+        return (Date.now() - new Date(user.lastCreditAt).getTime()) < windowMs;
        };
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
         const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);//false
         // Only call Flits API if customer hasn't redeemed before
-        if (!hasRedeemedBefore || !redeemedWithinHour) {
+        if (!hasRedeemedBefore && !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
           // Use actual email for Flits integration
           const flits = {
