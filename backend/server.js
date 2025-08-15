@@ -597,7 +597,7 @@ app.post("/api/roll-dice", async (req, res) => {
         marketPlace,
         shopifyPriceRuleId: shopifyDiscount.priceRuleId,
         shopifyDiscountCodeId: shopifyDiscount.discountCodeId,
-        isShopifyCode: useShopify,
+        isShopifyCode: true,
         generateOTPAt: req.session.generateOTPAt,
         enteredOTPAt: req.session.enteredOTPAt,
         rollDiceAt: new Date(),
@@ -610,7 +610,7 @@ app.post("/api/roll-dice", async (req, res) => {
       user.diceResult = diceResult;
       user.shopifyPriceRuleId = shopifyDiscount.priceRuleId;
       user.shopifyDiscountCodeId = shopifyDiscount.discountCodeId;
-      user.isShopifyCode = useShopify;
+      user.isShopifyCode = true;
       user.generateOTPAt = req.session.generateOTPAt;
       user.enteredOTPAt = req.session.enteredOTPAt;
       user.rollDiceAt = new Date();
