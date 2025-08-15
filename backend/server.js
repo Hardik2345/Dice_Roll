@@ -415,6 +415,7 @@ app.post("/api/send-otp", async (req, res) => {
         }
         if(tagsSet.has("wallet-order-created")){
           hasRedeemedBefore = true;
+          tag=undefined
           console.log("Customer has already redeemed before, but allowing to play");
         }
       }
