@@ -648,6 +648,9 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         console.log("Adding tag to Shopify customer");
+        if(req.session.tag){
+          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+        }   
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
        const user = await User.findOne({ mobileIdentifier })
@@ -660,7 +663,7 @@ app.post("/api/roll-dice", async (req, res) => {
         const ONE_HOUR_MS = 60 * 60 * 1000;
         const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);
         // Only call Flits API if customer hasn't redeemed before
-        if (!hasRedeemedBefore || !redeemedWithinHour) {
+        if (!hasRedeemedBefore && !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
           // Use actual email for Flits integration
           const flits = {
@@ -680,10 +683,6 @@ app.post("/api/roll-dice", async (req, res) => {
               },
             }
           );
-          if(req.session.tag){
-            await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-          }   
-
           await User.updateOne({ mobileIdentifier }, { $set: { lastCreditAt: new Date() } });
           console.log("Flits response recieved:", ress);
         } else {
