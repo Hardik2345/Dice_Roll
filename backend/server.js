@@ -380,7 +380,6 @@ app.post("/api/send-otp", async (req, res) => {
         !tagsSet.has('credited-once') &&
         !tagsSet.has('credited-twice') &&
         !tagsSet.has('credited-thrice');
-      console.log("hasNoTag:", hasNoTag);
 
       const hasExactlyOnce =
         tagsSet.has('credited-once') &&
@@ -395,7 +394,6 @@ app.post("/api/send-otp", async (req, res) => {
 
       // Check if customer has redeemed tags but don't block them
       if (shopifyCustomer.tags && (tagsSet.has("wallet-order-created") || hasExactlyOnce || hasExactlyTwice || hasExactlyThrice || hasNoTag)) {
-        console.log("Customer has already redeemed before, but allowing to play");
         if(hasNoTag){
           hasRedeemedBefore = false;
           console.log("hasRedeemedBefore:", hasRedeemedBefore); 
@@ -416,7 +414,7 @@ app.post("/api/send-otp", async (req, res) => {
         if(tagsSet.has("wallet-order-created")){
           hasRedeemedBefore = true;
           tag=undefined
-          console.log("Customer has already redeemed before, but allowing to play");
+          console.log("The order is not marked delovered yet, allowing the customer to play without cashback");
         }
       }
       // Store Shopify customerId in session (REST API returns numeric ID)
@@ -641,7 +639,6 @@ app.post("/api/roll-dice", async (req, res) => {
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
         const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);//false
-        console.log("Redeemed after 1 hour and dash ",!hasRedeemedBefore && !redeemedWithinHour)
         // Only call Flits API if customer hasn't redeemed before
         if (!hasRedeemedBefore && !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
