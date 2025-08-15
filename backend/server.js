@@ -686,7 +686,7 @@ app.post("/api/roll-dice", async (req, res) => {
               },
             }
           );
-          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag || "credited-once"]);
           await User.updateOne({ mobileIdentifier }, { $set: { lastCreditAt: new Date() } });
           console.log("Flits response recieved:", ress);
         } else {
