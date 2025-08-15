@@ -648,11 +648,7 @@ app.post("/api/roll-dice", async (req, res) => {
     await FunnelEvent.updateMany({ mobile }, { userId: user._id, name });
     // Add the 'redeemed' tag to the Shopify customer (REST Admin API)
     if (shopifyCustomerId) {
-      try {
-        console.log("Adding tag to Shopify customer");
-        // if(req.session.tag){
-        //   await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-        // }   
+      try { 
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
         const user = await User.findOne({ mobileIdentifier })
