@@ -240,7 +240,7 @@ async function findShopifyCustomerByPhone(phone) {
           "Content-Type": "application/json",
         },
       }
-    );
+    );    
     // Returns an array of customers (may be empty)
     return response.data.customers && response.data.customers.length > 0
       ? response.data.customers[0]
@@ -661,9 +661,9 @@ app.post("/api/roll-dice", async (req, res) => {
        };
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
-        const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);
+        const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);//false
         // Only call Flits API if customer hasn't redeemed before
-        if (!hasRedeemedBefore && !redeemedWithinHour) {
+        if (!hasRedeemedBefore || !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
           // Use actual email for Flits integration
           const flits = {
