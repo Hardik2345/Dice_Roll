@@ -650,9 +650,9 @@ app.post("/api/roll-dice", async (req, res) => {
     if (shopifyCustomerId) {
       try {
         console.log("Adding tag to Shopify customer");
-        if(req.session.tag){
-          await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
-        }   
+        // if(req.session.tag){
+        //   await addTagToShopifyCustomer(shopifyCustomerId, [req.session.tag]);
+        // }   
 
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
         const user = await User.findOne({ mobileIdentifier })
