@@ -382,6 +382,7 @@ app.post("/api/send-otp", async (req, res) => {
         !tagsSet.has('credited-once') &&
         !tagsSet.has('credited-twice') &&
         !tagsSet.has('credited-thrice');
+      console.log("hasNoTag:", hasNoTag);
 
       const hasExactlyOnce =
         tagsSet.has('credited-once') &&
@@ -399,6 +400,7 @@ app.post("/api/send-otp", async (req, res) => {
         console.log("Customer has already redeemed before, but allowing to play");
         if(hasNoTag){
           hasRedeemedBefore = false;
+          console.log("hasRedeemedBefore:", hasRedeemedBefore); 
           tag="credited-once"
         }
         if(hasExactlyOnce){
@@ -662,6 +664,7 @@ app.post("/api/roll-dice", async (req, res) => {
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
         const redeemedWithinHour = await redeemedWithin(mobileIdentifier, ONE_HOUR_MS);//false
+        console.log("Redeemed after 1 hour and dash ",!hasRedeemedBefore && !redeemedWithinHour)
         // Only call Flits API if customer hasn't redeemed before
         if (!hasRedeemedBefore && !redeemedWithinHour) {
           console.log("Customer hasn't redeemed before, calling Flits API");
