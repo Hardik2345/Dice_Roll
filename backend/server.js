@@ -681,7 +681,7 @@ app.post("/api/roll-dice", async (req, res) => {
       discountCode: shopifyDiscount.code,
       discount: `${shopifyDiscount.percentage}%`,
       shopifyUrl: shopifyDiscount.shopifyUrl,
-      isShopifyCode: useShopify,
+      isShopifyCode: true,
       message: `Congratulations! You won ${shopifyDiscount.percentage}% off!`,
     });
   } catch (error) {
