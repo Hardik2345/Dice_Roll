@@ -659,7 +659,7 @@ app.post("/api/roll-dice", async (req, res) => {
           .select('lastCreditAt')
           .lean();
         if (!user?.lastCreditAt) return false;
-        return (Date.now() - new Date(user.lastCreditAt).getTime()) > windowMs;
+        return (Date.now() - new Date(user.lastCreditAt).getTime()) < windowMs;
        };
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
