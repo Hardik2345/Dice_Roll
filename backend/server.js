@@ -649,7 +649,6 @@ app.post("/api/roll-dice", async (req, res) => {
     // Add the 'redeemed' tag to the Shopify customer (REST Admin API)
     if (shopifyCustomerId) {
       try { 
-
        const redeemedWithin = async (mobileIdentifier, windowMs) => {
         const user = await User.findOne({ mobileIdentifier })
           .select('lastCreditAt')
