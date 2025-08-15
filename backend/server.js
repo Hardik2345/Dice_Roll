@@ -13,7 +13,6 @@ require("dotenv").config();
 const User = require("./models/User");
 const FunnelEvent = require("./models/FunnelEvent");
 const CustomerTag = require("./models/CustomerTag");
-// const ShopifyService = require("./shopifyService");
 
 const allowedOrigins = [
   "https://dice-roll-5wsv-git-localdev-hardiks-projects-4c8d6fa8.vercel.app",
@@ -24,7 +23,6 @@ const allowedOrigins = [
 ];
 
 const app = express();
-// const shopifyService = new ShopifyService();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -558,30 +556,14 @@ app.post("/api/roll-dice", async (req, res) => {
     const diceResult = getWeightedDiceResult();
     // Create discount in Shopify (rest of the code remains the same)
     let shopifyDiscount;
-    let useShopify = true;
-    try {
-      shopifyDiscount = await shopifyService.createDiceRollDiscount(
-        diceResult,
-        name,
-        mobile
-      );
-      console.log(
-        "Shopify discount created successfully:",
-        shopifyDiscount.code
-      );
-    } catch (error) {
-      console.error("Shopify integration error:", error);
-      useShopify = false;
-      // Fallback to local discount code if Shopify fails
-      const discountInfo = DISCOUNT_CODES[diceResult];
-      shopifyDiscount = {
-        code: `${discountInfo.code}_${mobile}`,
-        percentage: parseInt(discountInfo.discount),
-        priceRuleId: null,
-        discountCodeId: null,
-        shopifyUrl: null,
-      };
-    }
+    const discountInfo = DISCOUNT_CODES[diceResult];
+    shopifyDiscount = {
+      code: `${discountInfo.code}_${mobile}`,
+      percentage: parseInt(discountInfo.discount),
+      priceRuleId: null,
+      discountCodeId: null,
+      shopifyUrl: null,
+    };
 
     let user = null;
 
@@ -755,52 +737,6 @@ app.post("/api/mark-discount-used", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to mark discount as used" });
   }
-});
-
-// Check discount status
-app.get("/api/discount-status/:code", async (req, res) => {
-  try {
-    const { code } = req.params;
-
-    // First check if this is a Shopify code in our database
-    const user = await User.findOne({ discountCode: code });
-
-    if (!user || !user.isShopifyCode) {
-      return res.json({
-        code,
-        valid: true,
-        isShopifyCode: false,
-        message: "This is a local discount code",
-      });
-    }
-
-    // Check with Shopify
-    const discount = await shopifyService.checkDiscountCode(code);
-
-    if (!discount) {
-      return res
-        .status(404)
-        .json({ error: "Discount code not found in Shopify" });
-    }
-
-    res.json({
-      code: discount.code,
-      usageCount: discount.usage_count,
-      valid: discount.usage_count === 0,
-      isShopifyCode: true,
-    });
-  } catch (error) {
-    console.error("Check discount error:", error);
-    res.status(500).json({ error: "Failed to check discount status" });
-  }
-});
-
-// Status endpoint
-app.get("/api/status", (req, res) => {
-  res.json({
-    verified: req.session.verified || false,
-    userInfo: req.session.userInfo || null,
-  });
 });
 
 // Admin endpoint to get usage statistics
@@ -1002,79 +938,6 @@ app.get("/api/test-dice-distribution", (req, res) => {
     expectedAvgDiscount: "100%",
     note: "Remove this endpoint in production",
   });
-});
-
-// Cleanup old/unused discounts (run as a scheduled job)
-app.post("/api/admin/cleanup-discounts", requireAdmin, async (req, res) => {
-  try {
-    // TODO: Add proper authentication here for admin access
-
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const oldUsers = await User.find({
-      playedAt: { $lt: thirtyDaysAgo },
-      shopifyPriceRuleId: { $ne: null },
-    });
-
-    let deletedCount = 0;
-    let errors = [];
-
-    for (const user of oldUsers) {
-      try {
-        const deleted = await shopifyService.deleteDiscount(
-          user.shopifyPriceRuleId
-        );
-        if (deleted) {
-          deletedCount++;
-          user.shopifyPriceRuleId = null;
-          user.shopifyDiscountCodeId = null;
-          await user.save();
-        }
-      } catch (error) {
-        errors.push({ userId: user._id, error: error.message });
-      }
-    }
-
-    res.json({
-      message: `Cleaned up ${deletedCount} old discounts`,
-      totalProcessed: oldUsers.length,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-  } catch (error) {
-    console.error("Cleanup error:", error);
-    res.status(500).json({ error: "Failed to cleanup discounts" });
-  }
-});
-
-// Health check endpoint
-app.get("/api/health", async (req, res) => {
-  try {
-    // Check MongoDB connection
-    const mongoStatus =
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected";
-
-    // Check Shopify connection
-    let shopifyStatus = "unknown";
-    try {
-      await shopifyService.makeRequest("/shop.json", "GET");
-      shopifyStatus = "connected";
-    } catch {
-      shopifyStatus = "disconnected";
-    }
-
-    res.json({
-      status: "ok",
-      mongodb: mongoStatus,
-      shopify: shopifyStatus,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: "error",
-      error: error.message,
-    });
-  }
 });
 
 // Add urlencoded middleware for Shopify webhooks to support both JSON and urlencoded payloads
