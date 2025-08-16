@@ -238,7 +238,8 @@ async function findShopifyCustomerByPhone(phone) {
           "Content-Type": "application/json",
         },
       }
-    );    
+    );   
+    console.log("Shopify Customer Data:",response) 
     // Returns an array of customers (may be empty)
     return response.data.customers && response.data.customers.length > 0
       ? response.data.customers[0]
