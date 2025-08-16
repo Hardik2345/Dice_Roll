@@ -239,7 +239,7 @@ async function findShopifyCustomerByPhone(phone) {
         },
       }
     );   
-    console.log("Shopify Customer Data:",response) 
+    console.log("Shopify Customer Data:",response.data) 
     // Returns an array of customers (may be empty)
     return response.data.customers && response.data.customers.length > 0
       ? response.data.customers[0]
