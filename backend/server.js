@@ -646,7 +646,7 @@ app.post("/api/roll-dice", async (req, res) => {
           const flits = {
             customer_email: email, // Use the actual email provided by user
             credit_details: {
-              credit_value: 449,
+              credit_value: 449,  
               comment_text: `Rewarding the user 449 in his wallet`,
             },
           };
@@ -689,7 +689,8 @@ app.post("/api/roll-dice", async (req, res) => {
 
 app.post("/api/update-credit-time", async (req, res) => {
   try {
-    const { mobileIdentifier } = req.body;
+    const { mobile } = req.body;
+    const mobileIdentifier=sha256(mobile);
     console.log("Updating credit time for", mobileIdentifier);
 
     const user = await User.findOne({ mobileIdentifier });
