@@ -705,7 +705,6 @@ app.post("/api/update-credit-time", async (req, res) => {
         diceResult: 6,
         lastCreditAt: new Date(),
       })
-      return res.status(404).json({ error: "User not found" });
     }
 
     user.lastCreditAt = new Date();
