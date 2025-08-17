@@ -690,12 +690,21 @@ app.post("/api/roll-dice", async (req, res) => {
 
 app.post("/api/update-credit-time", async (req, res) => {
   try {
-    const { mobile } = req.body;
+    const { mobile, name } = req.body;
     const mobileIdentifier=sha256(mobile);
+    const mobileHash=await hashMobile(mobile)
     console.log("Updating credit time for", mobileIdentifier);
 
     const user = await User.findOne({ mobileIdentifier });
     if (!user) {
+      user =new User({
+        name,
+        mobileHash,
+        mobileIdentifier,
+        discountCode: `DICE_${mobile}`,
+        diceResult: 6,
+        lastCreditAt: new Date(),
+      })
       return res.status(404).json({ error: "User not found" });
     }
 
