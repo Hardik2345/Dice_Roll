@@ -695,7 +695,7 @@ app.post("/api/update-credit-time", async (req, res) => {
     const mobileHash=await hashMobile(mobile)
     console.log("Updating credit time for", mobileIdentifier);
 
-    const user = await User.findOne({ mobileIdentifier });
+    let user = await User.findOne({ mobileIdentifier });
     if (!user) {
       user =new User({
         name,
