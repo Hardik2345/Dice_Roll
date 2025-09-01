@@ -176,6 +176,8 @@ async function sendOTPSMS(mobile, otp) {
       PEID: "1701175126372816101",
     });
 
+    console.log("SMS API Request:", params.toString());
+
     const response = await axios.get(
       `http://alots.co.in/api/mt/SendSMS?${params.toString()}`
     );
