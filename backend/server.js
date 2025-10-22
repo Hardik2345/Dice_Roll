@@ -637,6 +637,8 @@ app.post("/api/roll-dice", async (req, res) => {
               },
             }
           );
+          await addTagToShopifyCustomer(shopifyCustomerId, ["dice_roll_market_place_customer"]);
+          console.log("Shopify customer tagged as dice_roll_market_place_customer");
           console.log("Flits response recieved:", ress);
         } else {
           console.log("Customer has already redeemed before, skipping Flits API call");
