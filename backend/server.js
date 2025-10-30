@@ -618,7 +618,7 @@ app.post("/api/roll-dice", async (req, res) => {
 
         // Only call Flits API if customer hasn't redeemed before
         if (!hasRedeemedBefore) {
-          console.log("Customer hasn't redeemed before, calling Flits API");
+          console.log("Customer hasn't redeemed before, scheduling Flits API call in 10s");
           // Use actual email for Flits integration
           const flits = {
             customer_email: email, // Use the actual email provided by user
@@ -628,18 +628,27 @@ app.post("/api/roll-dice", async (req, res) => {
             },
           };
 
-          const ress = await axios.post(
-            "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
-            flits,
-            {
-              headers: {
-                "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
-              },
-            }
-          );
-          await addTagToShopifyCustomer(shopifyCustomerId, ["dice_roll_market_place_customer"]);
-          console.log("Shopify customer tagged as dice_roll_market_place_customer");
-          console.log("Flits response recieved:", ress);
+          // Fire-and-forget after 10 seconds without blocking request flow
+          setTimeout(() => {
+            (async () => {
+              try {
+                const ress = await axios.post(
+                  "https://l7dwmnkv4xwd2wytgus6eajvbq0xtkli.lambda-url.us-east-2.on.aws/custom_action/HIzfFJcKqJL4UNOh2M5ZTA",
+                  flits,
+                  {
+                    headers: {
+                      "x-api-key": process.env.CUSTOM_ACTION_API_KEY,
+                    },
+                  }
+                );
+                await addTagToShopifyCustomer(shopifyCustomerId, ["dice_roll_market_place_customer"]);
+                console.log("Shopify customer tagged as dice_roll_market_place_customer");
+                console.log("Flits response recieved:", ress?.data || ress?.status || ress);
+              } catch (err) {
+                console.error("Flits async call failed:", err?.response?.data || err);
+              }
+            })();
+          }, 10000);
         } else {
           console.log("Customer has already redeemed before, skipping Flits API call");
         }
