@@ -157,6 +157,46 @@ function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
+const FUNNEL_EVENT_TYPES = [
+  "entered",
+  "otp_sent",
+  "otp_verified",
+  "dice_rolled",
+  "discount_used",
+];
+
+function parseDateRange(startDate, endDate) {
+  if (!startDate || !endDate) {
+    return { error: "startDate and endDate are required" };
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { error: "Invalid startDate or endDate" };
+  }
+
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function escapeCSV(value) {
+  const normalized = value == null ? "" : String(value);
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildCSV(rows) {
+  if (!rows.length) return "";
+
+  const headers = Object.keys(rows[0]);
+  const lines = rows.map((row) =>
+    headers.map((header) => escapeCSV(row[header])).join(",")
+  );
+
+  return [headers.join(","), ...lines].join("\r\n");
+}
+
 // Helper function to send OTP via SMS gateway
 async function sendOTPSMS(mobile, otp) {
   try {
@@ -817,19 +857,15 @@ app.get(
     try {
       const { startDate, endDate, mobile, eventType, page = "1", limit = "50" } = req.query;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({ error: "startDate and endDate are required" });
+      const { start, end, error } = parseDateRange(startDate, endDate);
+      if (error) {
+        return res.status(400).json({ error });
       }
       if (!eventType) {
         return res.status(400).json({ error: "eventType is now required" });
       }
 
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-
-      const eventTypes = ["entered", "otp_sent", "otp_verified", "dice_rolled", "discount_used"]; 
-      if (!eventTypes.includes(eventType)) {
+      if (!FUNNEL_EVENT_TYPES.includes(eventType)) {
         return res.status(400).json({ error: "Invalid eventType" });
       }
 
@@ -874,6 +910,83 @@ app.get(
     }
   }
 );
+
+app.get("/api/admin/funnel-export", requireAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, mobile, eventType } = req.query;
+    const { start, end, error } = parseDateRange(startDate, endDate);
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
+    if (!eventType || !FUNNEL_EVENT_TYPES.includes(eventType)) {
+      return res.status(400).json({ error: "Valid eventType is required" });
+    }
+
+    const match = {
+      eventType,
+      timestamp: { $gte: start, $lte: end },
+    };
+
+    if (mobile) {
+      match.mobile = { $regex: mobile, $options: "i" };
+    }
+
+    const events = await FunnelEvent.aggregate([
+      { $match: match },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $addFields: {
+          discountCode: {
+            $cond: {
+              if: { $gt: [{ $size: "$user" }, 0] },
+              then: { $arrayElemAt: ["$user.discountCode", 0] },
+              else: "$discountCode",
+            },
+          },
+          unhashedMobile: {
+            $cond: {
+              if: { $gt: [{ $size: "$user" }, 0] },
+              then: { $arrayElemAt: ["$user.mobile", 0] },
+              else: null,
+            },
+          },
+        },
+      },
+      { $project: { user: 0 } },
+      { $sort: { timestamp: -1 } },
+    ]);
+
+    const rows = events.map((event, index) => ({
+      Index: index + 1,
+      Stage: event.eventType,
+      Name: event.name || "",
+      Mobile: event.unhashedMobile || event.mobile || "",
+      Timestamp: event.timestamp ? new Date(event.timestamp).toISOString() : "",
+      DiscountCode: event.discountCode || "",
+    }));
+
+    const csv = buildCSV(rows);
+    const safeStart = String(startDate).replace(/[^0-9-]/g, "");
+    const safeEnd = String(endDate).replace(/[^0-9-]/g, "");
+    const filename = `${eventType}_${safeStart}_to_${safeEnd}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    console.error("Funnel export error:", error);
+    res.status(500).json({ error: "Failed to export funnel data" });
+  }
+});
 
 // Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
 app.get("/api/test-dice-distribution", (req, res) => {
