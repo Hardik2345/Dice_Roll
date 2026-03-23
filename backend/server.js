@@ -36,9 +36,9 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Allow any Vercel deployment for this project
-    if (origin.includes('hardiks-projects-4c8d6fa8.vercel.app') || allowedOrigins.includes(origin)) {
+    if (origin.includes("hardiks-projects-4c8d6fa8.vercel.app") || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -51,10 +51,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Handle preflight requests
-// app.options('*', cors());
+// Express 5 does not accept "*" here; use a regex catch-all for preflight.
+app.options(/.*/, cors(corsOptions));
 app.options("/api/send-otp", cors(corsOptions));
 app.options("/api/verify-otp", cors(corsOptions));
+app.options("/api/admin/login", cors(corsOptions));
+app.options("/api/admin/logout", cors(corsOptions));
+app.options("/api/admin/status", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Support urlencoded bodies
 
@@ -71,9 +74,9 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   store: sessionStore, // 30 minutes
   cookie: {
-    secure: true, // required for cookies to be sent over HTTPS
+    secure: true,
     httpOnly: true,
-    sameSite: "none", // required for cross-site cookies
+    sameSite: "none",
     maxAge: 1000 * 60 * 30, // 30 minutes
   },
   name: "dice-roll-session",
@@ -106,6 +109,95 @@ const hashMobile = async (mobile) => {
 // Helper function to generate random OTP
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+const FUNNEL_EVENT_TYPES = [
+  "entered",
+  "otp_sent",
+  "otp_verified",
+  "dice_rolled",
+  "discount_used",
+];
+
+function parseDateRange(startDate, endDate) {
+  if (!startDate || !endDate) {
+    return { error: "startDate and endDate are required" };
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return { error: "Invalid startDate or endDate" };
+  }
+
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function buildFunnelMatch({ eventType, start, end, mobile }) {
+  const match = {
+    timestamp: { $gte: start, $lte: end },
+  };
+
+  if (eventType) {
+    match.eventType = eventType;
+  }
+
+  if (mobile) {
+    match.mobile = { $regex: mobile, $options: "i" };
+  }
+
+  return match;
+}
+
+async function enrichFunnelEvents(events) {
+  const userCache = new Map();
+
+  const getUser = async (userId) => {
+    if (!userId) return null;
+    const key = String(userId);
+    if (!userCache.has(key)) {
+      userCache.set(
+        key,
+        User.findById(userId).select("mobile discountCode").lean()
+      );
+    }
+    return userCache.get(key);
+  };
+
+  return Promise.all(
+    events.map(async (event) => {
+      const eventObj = typeof event.toObject === "function" ? event.toObject() : event;
+      const user = await getUser(eventObj.userId);
+
+      if (user?.mobile) {
+        eventObj.unhashedMobile = user.mobile;
+      }
+
+      if (!eventObj.discountCode && user?.discountCode) {
+        eventObj.discountCode = user.discountCode;
+      }
+
+      return eventObj;
+    })
+  );
+}
+
+function escapeCSV(value) {
+  const normalized = value == null ? "" : String(value);
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function buildCSV(rows) {
+  if (!rows.length) return "";
+
+  const headers = Object.keys(rows[0]);
+  const lines = rows.map((row) =>
+    headers.map((header) => escapeCSV(row[header])).join(",")
+  );
+
+  return [headers.join(","), ...lines].join("\r\n");
 }
 
 // Helper function to send OTP via SMS gateway
@@ -730,65 +822,109 @@ app.get(
   },
   async (req, res) => {
     try {
-      const { startDate, endDate, mobile } = req.query;
-      if (!startDate || !endDate) {
-        return res
-          .status(400)
-          .json({ error: "startDate and endDate are required" });
-      }
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      const { startDate, endDate, mobile, eventType } = req.query;
+      const { start, end, error } = parseDateRange(startDate, endDate);
 
-      const eventTypes = [
-        "entered",
-        "otp_sent",
-        "otp_verified",
-        "dice_rolled",
-        "discount_used",
-      ];
-      const stats = {};
-      const mobileFilter = mobile
-        ? { mobile: { $regex: mobile, $options: "i" } }
-        : {};
-      for (const eventType of eventTypes) {
-        const events = await FunnelEvent.find({
+      if (error) {
+        return res.status(400).json({ error });
+      }
+
+      if (eventType) {
+        if (!FUNNEL_EVENT_TYPES.includes(eventType)) {
+          return res.status(400).json({ error: "Invalid eventType" });
+        }
+
+        const pageNum = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const perPageRaw = parseInt(req.query.limit, 10) || 50;
+        const perPage = Math.min(Math.max(perPageRaw, 1), 1000);
+        const match = buildFunnelMatch({ eventType, start, end, mobile });
+
+        const [count, events] = await Promise.all([
+          FunnelEvent.countDocuments(match),
+          FunnelEvent.find(match)
+            .sort({ timestamp: -1 })
+            .skip((pageNum - 1) * perPage)
+            .limit(perPage),
+        ]);
+
+        const enrichedEvents = await enrichFunnelEvents(events);
+        const totalPages = count === 0 ? 1 : Math.ceil(count / perPage);
+
+        return res.json({
           eventType,
-          timestamp: { $gte: start, $lte: end },
-          ...mobileFilter,
-        }).sort({ timestamp: -1 });
-        // Add discountCode to each event if available from user
-        const eventsWithMobile = await Promise.all(
-          events.map(async (event) => {
-            let eventObj = event.toObject();
-            // If event has userId, fetch the user and attach unhashed mobile for admin
-            if (event.userId) {
-              const user = await User.findById(event.userId);
-              if (user && user.mobile) {
-                eventObj.unhashedMobile = user.mobile;
-              }
-            }
-            // Add discountCode if missing
-            if (!eventObj.discountCode && event.userId) {
-              const user = await User.findById(event.userId);
-              if (user && user.discountCode) {
-                eventObj.discountCode = user.discountCode;
-              }
-            }
-            return eventObj;
-          })
-        );
-        stats[eventType] = {
-          count: eventsWithMobile.length,
-          events: eventsWithMobile,
+          count,
+          page: pageNum,
+          totalPages,
+          limit: perPage,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1,
+          events: enrichedEvents,
+        });
+      }
+
+      const stats = {};
+      for (const funnelEventType of FUNNEL_EVENT_TYPES) {
+        const match = buildFunnelMatch({
+          eventType: funnelEventType,
+          start,
+          end,
+          mobile,
+        });
+        const events = await FunnelEvent.find(match).sort({ timestamp: -1 });
+        const enrichedEvents = await enrichFunnelEvents(events);
+
+        stats[funnelEventType] = {
+          count: enrichedEvents.length,
+          events: enrichedEvents,
         };
       }
+
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch funnel stats" });
     }
   }
 );
+
+app.get("/api/admin/funnel-export", async (req, res) => {
+  try {
+    const { startDate, endDate, mobile, eventType } = req.query;
+    const { start, end, error } = parseDateRange(startDate, endDate);
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
+    if (!eventType || !FUNNEL_EVENT_TYPES.includes(eventType)) {
+      return res.status(400).json({ error: "Valid eventType is required" });
+    }
+
+    const match = buildFunnelMatch({ eventType, start, end, mobile });
+    const events = await FunnelEvent.find(match).sort({ timestamp: -1 });
+    const enrichedEvents = await enrichFunnelEvents(events);
+
+    const rows = enrichedEvents.map((event, index) => ({
+      Index: index + 1,
+      Stage: event.eventType,
+      Name: event.name || "",
+      Mobile: event.unhashedMobile || event.mobile || "",
+      Timestamp: event.timestamp ? new Date(event.timestamp).toISOString() : "",
+      DiscountCode: event.discountCode || "",
+    }));
+
+    const csv = buildCSV(rows);
+    const safeStart = String(startDate).replace(/[^0-9-]/g, "");
+    const safeEnd = String(endDate).replace(/[^0-9-]/g, "");
+    const filename = `${eventType}_${safeStart}_to_${safeEnd}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    console.error("Funnel export error:", error);
+    res.status(500).json({ error: "Failed to export funnel data" });
+  }
+});
 
 // Test endpoint to verify dice distribution (REMOVE IN PRODUCTION)
 app.get("/api/test-dice-distribution", (req, res) => {

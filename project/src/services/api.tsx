@@ -46,7 +46,7 @@ export const getAdminStatus = () =>
   api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status");
 
 // API URL configuration
-const API_URL: string = "https://dice-roll-l2qy.onrender.com";
+export const API_URL: string = "https://dice-roll-l2qy.onrender.com";
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -109,6 +109,17 @@ const apiService = {
   getAdminStatus: () => api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status"),
   // Alias for backward compatibility
   getStatus: () => api.get<{ authenticated: boolean; admin?: Admin }>("/api/admin/status"),
+
+  exportFunnelCSV: (
+    startDate: string,
+    endDate: string,
+    eventType: string,
+    mobile?: string
+  ) =>
+    api.get<Blob>("/api/admin/funnel-export", {
+      params: { startDate, endDate, eventType, mobile: mobile || undefined },
+      responseType: "blob",
+    }),
 };
 
 // Export types for use in components

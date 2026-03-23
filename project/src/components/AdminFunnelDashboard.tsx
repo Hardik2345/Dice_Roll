@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
+import apiService, { API_URL } from "../services/api";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,7 +23,7 @@ ChartJS.register(
   Legend
 );
 
-const API_BASE = "https://dice-roll-l2qy.onrender.com";
+const API_BASE = API_URL;
 
 // Core event types we display as tabs (exclude discount_used for now)
 const EVENT_TYPES = ["entered", "otp_sent", "otp_verified", "dice_rolled"] as const;
@@ -82,6 +83,12 @@ interface EventPageMeta {
   limit: number;
 }
 
+function getFilenameFromDisposition(header?: string) {
+  if (!header) return null;
+  const match = header.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || null;
+}
+
 const AdminFunnelDashboard: React.FC = () => {
   // Date filters
   const [startDate, setStartDate] = useState<string>(
@@ -124,6 +131,7 @@ const AdminFunnelDashboard: React.FC = () => {
   // Loading & errors
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string>("");
 
   // Debounce mobile search input
@@ -399,8 +407,8 @@ const AdminFunnelDashboard: React.FC = () => {
     </>
   );
 
-  // CSV export: funnel summary or current tab page
-  const exportCSV = () => {
+  // CSV export: funnel summary or full selected stage
+  const exportCSV = async () => {
     if (activeTab === 'funnel') {
       const data = [
         { Stage: 'Entered', Count: counts.entered },
@@ -415,20 +423,30 @@ const AdminFunnelDashboard: React.FC = () => {
       a.href = url; a.download = 'funnel_summary.csv'; a.click();
       URL.revokeObjectURL(url);
     } else {
-      const meta = pages[activeTab as EventType];
-      if (!meta || !meta.events.length) return;
-      const data = meta.events.map((e, idx) => ({
-        '#': (meta.page - 1) * meta.limit + idx + 1,
-        Name: e.name || '',
-        Mobile: e.mobile,
-        Timestamp: formatDate(e.timestamp)
-      }));
-      const csv = toCSV(data);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${activeTab}_page${meta.page}.csv`; a.click();
-      URL.revokeObjectURL(url);
+      try {
+        setExporting(true);
+        setError("");
+        const response = await apiService.exportFunnelCSV(
+          startDate,
+          endDate,
+          activeTab,
+          debouncedMobileSearch
+        );
+        const blob = response.data;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disposition = response.headers["content-disposition"];
+        a.href = url;
+        a.download =
+          getFilenameFromDisposition(disposition) ||
+          `${activeTab}_${startDate}_to_${endDate}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        setError((e as any)?.response?.data?.error || "Failed to export CSV");
+      } finally {
+        setExporting(false);
+      }
     }
   };
 
@@ -459,9 +477,9 @@ const AdminFunnelDashboard: React.FC = () => {
           >{(loadingCounts || loadingEvents) ? 'Loading...' : 'Refresh'}</button>
           <button
             onClick={exportCSV}
-            className={`bg-green-600 text-white px-4 py-2 rounded ${ (activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
-            disabled={(activeTab === 'funnel' ? false : !currentMeta?.events.length) || loadingCounts || loadingEvents}
-          >Export CSV</button>
+            className={`bg-green-600 text-white px-4 py-2 rounded ${loadingCounts || loadingEvents || exporting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`}
+            disabled={loadingCounts || loadingEvents || exporting}
+          >{exporting ? 'Exporting...' : 'Export CSV'}</button>
         </div>
         <div className="flex gap-2 flex-wrap">
           {TABS.map(tab => (
